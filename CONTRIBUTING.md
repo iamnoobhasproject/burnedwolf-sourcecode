@@ -5,7 +5,7 @@ Thanks for your interest! BurnedWolf is a community-friendly project — transla
 ## Quick start
 
 ```bash
-git clone https://github.com/iamnoobhasproject/burnedwolf.git
+git clone https://github.com/iamnoobhasproject/burnedwolf-sourcecode.git
 cd burnedwolf
 npm install
 # Drop tor-bin/ and zapret-bin/ binaries (see README.md)
