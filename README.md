@@ -12,7 +12,7 @@ Herşey kontrol edilebilir ve gözlemlenebilir. Programı kullanıpta sorun yaş
 Programı ilk açışınızda İngilizce, Rusça ve Türkçe dil seçenekleri arasında seçim yapıyorsunuz ve otomatik güncellemeyi açıp açmamak istediğiniz hakkında soru soruluyor. Yani otomatik güncellemeyi istediğiniz gibi devredışı bırakıp açabiliyorsunuz.# 🐺 BurnedWolf
 
 > **Turkey-focused DPI bypass + Tor-routed Discord + system integrity checker for Windows.**
-> Built with Electron · MIT licensed · v1.5.0
+> Built with Electron · MIT licensed · v1.6.0
 
 [🇬🇧 English](#english) · [🇹🇷 Türkçe](#türkçe) · [🇷🇺 Русский](#русский)
 
