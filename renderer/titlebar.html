@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Burnedwolf Network</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --bg: #0A0A14;
+        --surface: #15151F;
+        --surface-2: #1F1F2D;
+        --primary: #A855F7;
+        --primary-hover: #9333EA;
+        --primary-glow: rgba(168, 85, 247, 0.35);
+        --success: #22C55E;
+        --success-glow: rgba(34, 197, 94, 0.3);
+        --warning: #F59E0B;
+        --danger: #EF4444;
+        --text-main: #F4F4F5;
+        --text-muted: #A1A1AA;
+        --text-faint: #71717A;
+        --border: rgba(255, 255, 255, 0.06);
+        --border-strong: rgba(255, 255, 255, 0.1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; }
+
+    html, body { height: 100%; width: 100%; background: transparent; overflow: hidden; }
+
+    body {
+        font-family: 'Inter', -apple-system, sans-serif;
+        color: var(--text-main);
+        display: flex;
+        padding: 8px;
+    }
+
+    .card {
+        flex: 1;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+    }
+
+    /* === TITLEBAR (drag + window controls) === */
+    .titlebar {
+        height: 42px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border);
+        -webkit-app-region: drag;
+        position: relative;
+        z-index: 2;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; padding-left: 18px; }
+    .brand img { width: 18px; height: 18px; }
+    .brand-name { font-size: 0.76rem; font-weight: 800; letter-spacing: 0.5px; color: var(--text-main); }
+
+    .window-controls { display: flex; height: 100%; -webkit-app-region: no-drag; }
+    .win-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        width: 46px;
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transition: background 0.15s, color 0.15s;
+    }
+    .win-btn:hover { background: rgba(255, 255, 255, 0.05); color: #fff; }
+
+    /* === CONTENT === */
+    .content-area {
+        flex: 1;
+        padding: 28px 30px 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        overflow-y: auto;
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Hero: logo + welcome + status */
+    .hero {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        margin-bottom: 24px;
+    }
+
+    .core-logo {
+        width: 56px;
+        height: 56px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(168, 85, 247, 0.08);
+        border: 1px solid rgba(168, 85, 247, 0.22);
+        margin-bottom: 14px;
+    }
+    .core-logo img { width: 30px; height: 30px; object-fit: contain; }
+
+    h2 {
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: #fff;
+        letter-spacing: -0.4px;
+        margin-bottom: 8px;
+    }
+    .hero-sub {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 14px;
+        font-weight: 500;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 13px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border-strong);
+        border-radius: 20px;
+        font-size: 0.74rem;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+    .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--success);
+        box-shadow: 0 0 8px var(--success-glow);
+        animation: pulseDot 2.2s ease-in-out infinite;
+    }
+
+    /* Settings card */
+    .card-section {
+        width: 100%;
+        max-width: 420px;
+        background: rgba(255,255,255,0.02);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 6px 14px;
+        margin-bottom: 14px;
+    }
+
+    .setting-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 13px 4px;
+        gap: 14px;
+        border-bottom: 1px solid var(--border);
+    }
+    .setting-row:last-child { border-bottom: none; }
+    .setting-info { flex: 1; min-width: 0; }
+    .setting-info h4 {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 3px;
+        letter-spacing: -0.1px;
+    }
+    .setting-info p {
+        font-size: 0.74rem;
+        color: var(--text-muted);
+        line-height: 1.4;
+    }
+
+    /* Hotkey binder pill */
+    .key-binder {
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid var(--border-strong);
+        padding: 7px 14px;
+        border-radius: 8px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.74rem;
+        color: #fff;
+        cursor: pointer;
+        font-weight: 700;
+        transition: border-color 0.15s, background 0.15s, color 0.15s;
+        min-width: 110px;
+        text-align: center;
+        letter-spacing: 0.3px;
+    }
+    .key-binder:hover { border-color: var(--primary); background: rgba(168, 85, 247, 0.08); }
+
+    /* Language picker — 3 small pill buttons */
+    .lang-picker { display: inline-flex; gap: 4px; padding: 3px; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: 7px; }
+    .lang-pill {
+        background: transparent; border: none;
+        padding: 5px 10px; border-radius: 4px;
+        font-family: 'Inter', sans-serif; font-size: 0.7rem; font-weight: 700;
+        letter-spacing: 0.4px; color: var(--text-muted); cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+    }
+    .lang-pill:hover  { color: #fff; background: rgba(255,255,255,0.04); }
+    .lang-pill.active { color: #fff; background: var(--primary); }
+
+    /* iOS-style switch */
+    .switch { position: relative; display: inline-block; width: 42px; height: 22px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid var(--border-strong);
+        transition: background 0.25s, border-color 0.25s;
+        border-radius: 22px;
+    }
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 14px;
+        width: 14px;
+        left: 3px;
+        bottom: 3px;
+        background: var(--text-muted);
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background 0.25s;
+        border-radius: 50%;
+    }
+    input:checked + .slider {
+        background: var(--primary);
+        border-color: var(--primary);
+    }
+    input:checked + .slider:before {
+        transform: translateX(20px);
+        background: #fff;
+    }
+
+    /* Version footer */
+    .version-bar {
+        width: 100%;
+        max-width: 420px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 16px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-size: 0.74rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+    .version-bar .label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .version-bar .label svg { color: var(--text-faint); }
+    .version-bar #versionDisplay {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        padding: 2px 8px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        color: var(--text-main);
+        border-radius: 4px;
+        font-size: 0.7rem;
+    }
+
+    /* Scrollbar */
+    .content-area::-webkit-scrollbar { width: 6px; }
+    .content-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+    .content-area::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+    @keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.9); } }
+</style>
+</head>
+<body>
+
+<div class="card">
+
+    <div class="titlebar">
+        <div class="brand">
+            <img src="icon.png" alt="BW">
+            <span class="brand-name">BURNEDWOLF</span>
+        </div>
+        <div class="window-controls">
+            <button class="win-btn" id="exit" title="Send to system tray (right-click tray icon to quit)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="content-area">
+
+        <div class="hero">
+            <div class="core-logo"><img src="icon.png" alt="Logo"></div>
+            <h2 data-i18n="titlebar.welcome">Welcome to BurnedWolf</h2>
+            <div class="hero-sub" data-i18n="titlebar.welcome_sub">Press your hotkey anytime to open the module menu.</div>
+        </div>
+
+        <div class="card-section">
+            <div class="setting-row">
+                <div class="setting-info">
+                    <h4 data-i18n="titlebar.run_on_startup">Run on Startup</h4>
+                    <p data-i18n="titlebar.run_on_startup_desc">Start automatically in the background when Windows boots.</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="autoStartToggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row">
+                <div class="setting-info">
+                    <h4 data-i18n="titlebar.auto_updates">Automatic Updates</h4>
+                    <p data-i18n="titlebar.auto_updates_desc">Check for updates every time the app launches.</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="autoUpdateToggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row">
+                <div class="setting-info">
+                    <h4 data-i18n="titlebar.language">Language</h4>
+                    <p data-i18n="titlebar.language_desc">Interface language. Applies instantly to every screen.</p>
+                </div>
+                <div class="lang-picker">
+                    <button class="lang-pill" data-lang="en">EN</button>
+                    <button class="lang-pill" data-lang="tr">TR</button>
+                    <button class="lang-pill" data-lang="ru">RU</button>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <div class="setting-info">
+                    <h4 data-i18n="titlebar.hotkey">Spotlight Hotkey</h4>
+                    <p data-i18n="titlebar.hotkey_desc">Press a combination to open the quick action menu anywhere.</p>
+                </div>
+                <div id="spotlightKeyBtn" class="key-binder">Ctrl+Space</div>
+            </div>
+        </div>
+
+        <div class="version-bar">
+            <span class="label">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                <span data-i18n="titlebar.current_build">Current build</span>
+            </span>
+            <span id="versionDisplay">…</span>
+        </div>
+
+    </div>
+
+</div>
+
+<script src="./titlebar.js"></script>
+</body>
+</html>
