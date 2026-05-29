@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --bg: #0A0A14;
+        --surface: #15151F;
+        --surface-2: #1F1F2D;
+        --primary: #A855F7;
+        --primary-hover: #9333EA;
+        --primary-glow: rgba(168, 85, 247, 0.35);
+        --success: #22C55E;
+        --success-glow: rgba(34, 197, 94, 0.3);
+        --warning: #F59E0B;
+        --danger: #EF4444;
+        --text-main: #F4F4F5;
+        --text-muted: #A1A1AA;
+        --text-faint: #71717A;
+        --border: rgba(255, 255, 255, 0.06);
+        --border-strong: rgba(255, 255, 255, 0.1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; }
+
+    html, body {
+        height: 100%;
+        width: 100%;
+        background: transparent;
+        overflow: hidden;
+    }
+
+    body {
+        font-family: 'Inter', -apple-system, sans-serif;
+        color: var(--text-main);
+        display: flex;
+        -webkit-app-region: drag;
+        padding: 8px;
+    }
+
+    /* The whole window IS the card now */
+    .card {
+        flex: 1;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+        transition: border-color 0.3s ease;
+    }
+    .card.success { border-color: rgba(34, 197, 94, 0.35); }
+    .card.error   { border-color: rgba(239, 68, 68, 0.35); }
+
+    /* Brand row at top */
+    .brand-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 22px;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+        z-index: 1;
+    }
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .brand img { width: 22px; height: 22px; }
+    .brand-name {
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        color: var(--text-main);
+    }
+    .brand-sub {
+        font-size: 0.66rem;
+        font-weight: 600;
+        color: var(--text-faint);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        padding: 4px 9px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+    }
+
+    /* Stage area */
+    .stage {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 32px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .state {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        width: 100%;
+        max-width: 360px;
+    }
+    .state.active { display: flex; animation: stateIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+    /* === ICONS === */
+    .icon-orb {
+        width: 64px;
+        height: 64px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+        background: rgba(168, 85, 247, 0.08);
+        border: 1px solid rgba(168, 85, 247, 0.25);
+        position: relative;
+    }
+    .icon-orb img { width: 32px; height: 32px; object-fit: contain; }
+    .icon-orb.success {
+        background: rgba(34, 197, 94, 0.08);
+        border-color: rgba(34, 197, 94, 0.35);
+    }
+    .icon-orb.error {
+        background: rgba(239, 68, 68, 0.08);
+        border-color: rgba(239, 68, 68, 0.35);
+    }
+
+    /* Simple spinner ring */
+    .ring-spinner {
+        position: absolute;
+        inset: -5px;
+        border-radius: 14px;
+        pointer-events: none;
+    }
+    .ring-spinner::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        border-top-color: var(--primary);
+        animation: spin 1s linear infinite;
+    }
+
+    /* Typography */
+    .title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: -0.4px;
+        margin-bottom: 6px;
+    }
+    .subtitle {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        line-height: 1.55;
+        max-width: 300px;
+    }
+
+    /* Version transition pill */
+    .version-pill {
+        margin-top: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 7px 12px;
+        background: rgba(168, 85, 247, 0.06);
+        border: 1px solid rgba(168, 85, 247, 0.2);
+        border-radius: 6px;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--primary);
+    }
+
+    /* Progress */
+    .progress-wrap {
+        width: 100%;
+        margin-top: 22px;
+    }
+    .progress-track {
+        width: 100%;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 2px;
+        overflow: hidden;
+    }
+    .progress-fill {
+        height: 100%;
+        width: 0%;
+        background: var(--primary);
+        border-radius: 2px;
+        transition: width 0.3s ease, background 0.3s ease;
+    }
+    .progress-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 12px;
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+    .progress-meta .status {
+        color: var(--text-main);
+        font-weight: 600;
+    }
+
+    /* Buttons */
+    .actions {
+        display: flex;
+        gap: 10px;
+        width: 100%;
+        margin-top: 22px;
+        -webkit-app-region: no-drag;
+    }
+    .btn {
+        flex: 1;
+        padding: 11px 16px;
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+        font-size: 0.85rem;
+        border-radius: 9px;
+        cursor: pointer;
+        transition: background 0.18s ease, transform 0.12s ease, border-color 0.18s ease;
+        border: 1px solid transparent;
+        outline: none;
+        letter-spacing: 0.1px;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-ghost {
+        background: transparent;
+        border-color: var(--border-strong);
+        color: var(--text-muted);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.05); color: #fff; border-color: rgba(255,255,255,0.18); }
+    .btn-primary {
+        background: var(--primary);
+        color: #fff;
+        box-shadow: 0 4px 18px rgba(168, 85, 247, 0.35);
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
+
+    /* Footer hint */
+    .footer-hint {
+        padding: 12px 22px;
+        font-size: 0.7rem;
+        color: var(--text-faint);
+        text-align: center;
+        border-top: 1px solid var(--border);
+        font-weight: 500;
+        letter-spacing: 0.2px;
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Animations */
+    @keyframes spin     { to { transform: rotate(360deg); } }
+    @keyframes shimmer  { to { transform: translateX(100%); } }
+    @keyframes stateIn  { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulseDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+    .live-dot {
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        background: var(--primary);
+        box-shadow: 0 0 8px var(--primary);
+        animation: pulseDot 1.4s ease-in-out infinite;
+    }
+
+    /* Backwards-compatible aliases (updater.js touches .panel and .logo-box) */
+    .panel   { /* old hook: handled by .card now */ }
+    .logo-box{ /* old hook: handled by .icon-orb now */ }
+</style>
+</head>
+<body>
+
+<div class="card panel" id="card">
+
+    <div class="brand-row">
+        <div class="brand">
+            <img src="icon.png" alt="BurnedWolf">
+            <span class="brand-name">BURNEDWOLF</span>
+        </div>
+        <span class="brand-sub" id="brandSub">Updater</span>
+    </div>
+
+    <div class="stage">
+
+        <!-- 1) Checking -->
+        <div id="checkState" class="state active">
+            <div class="icon-orb logo-box">
+                <div class="ring-spinner"></div>
+                <img src="icon.png" alt="BurnedWolf">
+            </div>
+            <div class="title" data-i18n="updater.checking_title">Checking for Updates</div>
+            <div class="subtitle" data-i18n="updater.checking_sub">Establishing a secure connection to the BurnedWolf network…</div>
+        </div>
+
+        <!-- 2) Update available -->
+        <div id="updateAvailableState" class="state">
+            <div class="icon-orb logo-box">
+                <img src="icon.png" alt="BurnedWolf">
+            </div>
+            <div class="title" data-i18n="updater.available_title">A new version is available</div>
+            <div class="subtitle" data-i18n="updater.available_sub">An updated build is ready. Installing only takes a few seconds and your settings will be preserved.</div>
+            <div class="version-pill"><span id="versionText">— → —</span></div>
+            <div class="actions">
+                <button class="btn btn-ghost" id="btnUpdateClose" data-i18n="updater.btn_not_now">Not now</button>
+                <button class="btn btn-primary" id="btnUpdate" data-i18n="updater.btn_update_now">Update now</button>
+            </div>
+        </div>
+
+        <!-- 3) Downloading / Installing -->
+        <div id="progressState" class="state">
+            <div class="icon-orb logo-box">
+                <div class="ring-spinner"></div>
+                <img src="icon.png" alt="BurnedWolf">
+            </div>
+            <div class="title" data-i18n="updater.installing_title">Updating BurnedWolf</div>
+            <div class="subtitle" data-i18n="updater.installing_sub">Please don't close the window — this only takes a moment.</div>
+            <div class="progress-wrap">
+                <div class="progress-track"><div class="progress-fill" id="pFill"></div></div>
+                <div class="progress-meta">
+                    <span class="status" id="statusText">Downloading Package: 0%</span>
+                    <span class="live-dot"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4) Up to date -->
+        <div id="upToDateState" class="state">
+            <div class="icon-orb success logo-box">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            <div class="title" data-i18n="updater.uptodate_title">You're all set</div>
+            <div class="subtitle" data-i18n="updater.uptodate_sub">BurnedWolf is up to date. Redirecting to the main interface…</div>
+        </div>
+
+        <!-- 5) Error -->
+        <div id="errorState" class="state">
+            <div class="icon-orb error logo-box">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </div>
+            <div class="title" data-i18n="updater.error_title">Couldn't reach the server</div>
+            <div class="subtitle" data-i18n="updater.error_sub">Check your internet connection and try again. The app can't continue without verifying the update channel.</div>
+            <div class="actions" style="justify-content: center;">
+                <button class="btn btn-ghost" style="max-width: 180px;" id="btnErrorClose" data-i18n="common.close">Close</button>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer-hint" data-i18n="updater.footer">
+        BurnedWolf Gateway v1.6.0
+    </div>
+
+</div>
+
+<script src="./updater.js"></script>
+<script>
+    // Brand-sub label switches with the active state, translated live.
+    (function() {
+        const i18n = require('./i18n');
+        const card = document.getElementById('card');
+        const brandSub = document.getElementById('brandSub');
+        const labelKeys = {
+            checkState:           'updater.label_updater',
+            updateAvailableState: 'updater.label_update',
+            progressState:        'updater.label_installing',
+            upToDateState:        'updater.label_ready',
+            errorState:           'updater.label_offline'
+        };
+        function paintBrandSub() {
+            const active = document.querySelector('.state.active');
+            if (active && labelKeys[active.id]) {
+                brandSub.textContent = i18n.t(labelKeys[active.id]);
+            }
+        }
+        const observer = new MutationObserver(() => {
+            const active = document.querySelector('.state.active');
+            if (!active) return;
+            card.classList.remove('success', 'error');
+            if (active.id === 'upToDateState') card.classList.add('success');
+            if (active.id === 'errorState')    card.classList.add('error');
+            paintBrandSub();
+        });
+        document.querySelectorAll('.state').forEach(s => observer.observe(s, { attributes: true, attributeFilter: ['class'] }));
+        // Re-translate brand label when language toggles in another window
+        const { ipcRenderer } = require('electron');
+        ipcRenderer.on('language-changed', () => setTimeout(paintBrandSub, 60));
+    })();
+</script>
+</body>
+</html>

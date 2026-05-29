@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0A0A14; 
+    --surface: rgba(26, 29, 36, 0.95); 
+    --primary: #A855F7;
+    --text-main: #F4F4F5; 
+    --text-muted: #A1A1AA; 
+    --border: rgba(255, 255, 255, 0.08);
+    --warning: #F59E0B;
+    --success: #22C55E;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; }
+  body { font-family: 'Inter', sans-serif; background: transparent; overflow: hidden; display: flex; justify-content: center; padding-top: 8vh; height: 100vh; }
+  
+  .spotlight-container { width: 100%; max-width: 650px; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 12px 32px rgba(0,0,0,0.6); overflow: hidden; animation: slideDown 0.18s ease-out; }
+
+  /* SEARCH HEADER */
+  .search-header { display: flex; align-items: center; padding: 0 22px; border-bottom: 1px solid var(--border); }
+  .search-icon { color: var(--primary); margin-right: 14px; }
+  .search-input { flex: 1; background: transparent; border: none; color: #fff; font-size: 1.3rem; padding: 25px 0; outline: none; font-family: 'Inter', sans-serif; font-weight: 500; }
+  .search-input::placeholder { color: #6B7280; }
+  
+  /* RESULTS GRID (Windows desktop-icon style) */
+  .results-container {
+    max-height: 380px;
+    overflow-y: auto;
+    padding: 18px 16px;
+    scroll-behavior: smooth;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .results-container::-webkit-scrollbar { width: 4px; }
+  .results-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .result-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 14px 8px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+    gap: 10px;
+    border: 1px solid transparent;
+    text-align: center;
+    min-height: 110px;
+  }
+  .result-item:hover { background: rgba(255, 255, 255, 0.03); }
+  .result-item.active {
+    background: rgba(168, 85, 247, 0.1);
+    border-color: rgba(168, 85, 247, 0.25);
+    transform: translateY(-1px);
+  }
+
+  .item-title {
+    font-weight: 600;
+    color: #fff;
+    font-size: 0.78rem;
+    letter-spacing: 0.1px;
+    line-height: 1.2;
+    word-break: break-word;
+  }
+  .result-item.active .item-title { color: var(--primary); }
+
+  .item-icon {
+    width: 46px;
+    height: 46px;
+    background: rgba(0, 0, 0, 0.28);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    transition: color 0.15s, border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  }
+  .result-item:hover .item-icon { color: #fff; border-color: rgba(255,255,255,0.12); }
+  .result-item.active .item-icon {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: rgba(168, 85, 247, 0.08);
+  }
+
+  /* RAM usage badge under the icon */
+  .item-mem {
+    font-family: 'JetBrains Mono', 'Inter', monospace;
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    letter-spacing: 0.2px;
+    line-height: 1.3;
+    min-width: 48px;
+    text-align: center;
+  }
+  .item-mem.idle {
+    color: var(--text-faint, #6B7280);
+    opacity: 0.55;
+  }
+  .item-mem.active {
+    color: var(--success);
+    border-color: rgba(34, 197, 94, 0.25);
+    background: rgba(34, 197, 94, 0.08);
+  }
+  .result-item.active .item-mem.active { color: var(--success); }
+
+  .empty-state {
+    padding: 36px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    display: none;
+    grid-column: 1 / -1;
+  }
+
+  /* COLLAPSIBLE LOGS (ACCORDION) */
+  .logs-accordion { border-top: 1px solid var(--border); background: rgba(0,0,0,0.2); display: flex; flex-direction: column; }
+  .logs-header { padding: 12px 20px; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s; }
+  .logs-header:hover { color: #fff; background: rgba(255,255,255,0.02); }
+  .logs-header .title-left { display: flex; align-items: center; gap: 8px; }
+  .logs-header svg { color: var(--primary); }
+  
+  .chevron { transition: transform 0.3s ease; }
+  .logs-accordion.expanded .chevron { transform: rotate(180deg); }
+  
+  .logs-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease; padding: 0 15px; }
+  .logs-accordion.expanded .logs-content { max-height: 300px; padding: 0 15px 15px 15px; overflow-y: auto; }
+  .logs-content::-webkit-scrollbar { width: 4px; }
+  .logs-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  
+  .announce-item { display: flex; align-items: flex-start; gap: 8px; font-size: 0.75rem; color: var(--text-muted); padding: 8px 10px; border-radius: 6px; background: rgba(255,255,255,0.02); margin-bottom: 5px; border: 1px solid var(--border); }
+  .announce-bullet { width: 6px; height: 6px; background: var(--primary); border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+
+  /* UPDATE SECTION INSIDE ACCORDION */
+  .update-section { display: none; padding-top: 15px; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); flex-direction: column; align-items: center; }
+  .version-text { font-size: 0.75rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 10px; text-align: center; }
+  .btn-update { width: 100%; max-width: 300px; padding: 10px; font-weight: 700; font-size: 0.75rem; background: var(--warning); color: #fff; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+  .btn-update:hover { background: #F59E0B; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+  .progress-text { display: none; font-size: 0.75rem; color: var(--success); margin-top: 5px; font-weight: 700; text-align: center; }
+
+  /* BOTTOM WARNING BANNER */
+  .warning-banner { width: 100%; background: rgba(245, 158, 11, 0.05); border-top: 1px solid var(--border); padding: 10px 20px; font-size: 0.7rem; color: var(--text-muted); display: flex; align-items: center; gap: 10px; }
+  .warning-banner svg { color: var(--warning); flex-shrink: 0; }
+
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<div class="spotlight-container">
+  
+  <div class="search-header">
+    <div class="search-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></div>
+    <input type="text" class="search-input" id="searchInput" data-i18n-placeholder="spotlight.search_placeholder" placeholder="Search BurnedWolf modules…" spellcheck="false" autocomplete="off">
+  </div>
+  
+  <div class="results-container" id="resultsList"></div>
+  <div class="empty-state" id="emptyState" data-i18n="spotlight.empty">No modules found matching your query.</div>
+
+  <div class="logs-accordion" id="logsAccordion">
+      <div class="logs-header" id="logsHeader">
+          <div class="title-left">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+              <span data-i18n="spotlight.logs_header">UPDATES</span>
+          </div>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </div>
+      <div class="logs-content">
+          <div id="announceList">
+              <div style="text-align:center; padding: 10px; color: var(--text-muted); font-size:0.75rem;" data-i18n="spotlight.logs_loading">Loading logs…</div>
+          </div>
+
+          <div class="update-section" id="spotlightUpdateArea">
+              <div class="version-text"><span data-i18n="spotlight.update_required">System Update Required:</span> <span id="spotlightNewVersion" style="color: var(--warning);"></span></div>
+              <button id="btnSpotlightUpdate" class="btn-update" data-i18n="spotlight.btn_update">Download & Install</button>
+              <div id="spotlightUpdateProgress" class="progress-text">Downloading: 0%</div>
+          </div>
+      </div>
+  </div>
+
+  <div class="warning-banner">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+      <span data-i18n="spotlight.warning_banner">Your game might be running in exclusive fullscreen mode. Switch to 'Borderless Windowed' for seamless overlay.</span>
+  </div>
+
+</div>
+
+<script src="./spotlight.js"></script>
+</body>
+</html>

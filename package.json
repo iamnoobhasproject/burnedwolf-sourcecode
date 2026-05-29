@@ -1,0 +1,45 @@
+{
+  "name": "burnedwolf",
+  "version": "1.6.0",
+  "description": "Özel Siber Ağ Geçidi ve Tünelleme Sistemi",
+  "author": "Developer",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "npm run obfuscate && electron-builder",
+    "obfuscate": "javascript-obfuscator ./ --output ./ --compact true --control-flow-flattening true --control-flow-flattening-threshold 0.4 --dead-code-injection true --dead-code-injection-threshold 0.4 --identifier-names-generator hexadecimal --string-array true --string-array-encoding base64 --string-array-index-shift true --split-strings true --split-strings-chunk-length 5 --disable-console-output true --exclude node_modules"
+  },
+  "devDependencies": {
+    "electron": "^26.6.10",
+    "electron-builder": "^24.0.0",
+    "javascript-obfuscator": "^4.1.0"
+  },
+  "build": {
+    "appId": "com.burnedwolf.network",
+    "productName": "Burnedwolf",
+    "asar": true,
+    "asarUnpack": [
+      "tor-bin/**/*",
+      "zapret-bin/**/*"
+    ],
+    "directories": {
+      "output": "build"
+    },
+    "win": {
+      "icon": "icon.png",
+      "target": [
+        "nsis"
+      ],
+      "requestedExecutionLevel": "requireAdministrator"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "runAfterFinish": true
+    }
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.17"
+  }
+}

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BurnedWolf — Welcome</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --bg: #0A0A14;
+        --surface: #15151F;
+        --surface-2: #1F1F2D;
+        --primary: #A855F7;
+        --primary-hover: #9333EA;
+        --accent: #C084FC;
+        --success: #22C55E;
+        --warning: #F59E0B;
+        --text-main: #F4F4F5;
+        --text-muted: #A1A1AA;
+        --text-faint: #71717A;
+        --border: rgba(255, 255, 255, 0.06);
+        --border-strong: rgba(168, 85, 247, 0.2);
+        --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; }
+
+    html, body { height: 100%; width: 100%; background: transparent; overflow: hidden; }
+
+    body {
+        font-family: 'Inter', -apple-system, sans-serif;
+        color: var(--text-main);
+        display: flex;
+        -webkit-app-region: drag;
+        padding: 8px;
+    }
+
+    .card {
+        flex: 1;
+        background: var(--surface);
+        border: 1px solid var(--border-strong);
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+    }
+
+    /* Subtle purple corner accent */
+    .card::before {
+        content: '';
+        position: absolute;
+        top: -20%;
+        right: -20%;
+        width: 350px;
+        height: 350px;
+        background: radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, transparent 60%);
+        pointer-events: none;
+        filter: blur(40px);
+    }
+
+    .brand-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+        z-index: 1;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand img { width: 20px; height: 20px; }
+    .brand-name { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.5px; }
+    .step-indicator {
+        font-size: 0.66rem;
+        font-weight: 700;
+        color: var(--primary);
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        padding: 4px 10px;
+        background: rgba(168, 85, 247, 0.08);
+        border: 1px solid rgba(168, 85, 247, 0.25);
+        border-radius: 4px;
+    }
+
+    .stage {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
+        position: relative;
+        z-index: 1;
+        -webkit-app-region: no-drag;
+    }
+
+    .step {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        width: 100%;
+        max-width: 420px;
+        animation: fadeUp 0.35s var(--ease-smooth) both;
+    }
+    .step.active { display: flex; }
+
+    .step-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 18px;
+        background: rgba(168, 85, 247, 0.1);
+        border: 1px solid rgba(168, 85, 247, 0.3);
+        color: var(--primary);
+    }
+
+    .title {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: #fff;
+        letter-spacing: -0.4px;
+        margin-bottom: 8px;
+    }
+    .subtitle {
+        font-size: 0.88rem;
+        color: var(--text-muted);
+        line-height: 1.55;
+        margin-bottom: 28px;
+    }
+
+    /* Language picker */
+    .lang-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        width: 100%;
+        margin-bottom: 24px;
+    }
+    .lang-tile {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 16px 10px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.18s, border-color 0.18s, transform 0.12s;
+        font-family: 'Inter', sans-serif;
+        color: var(--text-main);
+        gap: 8px;
+    }
+    .lang-tile:hover {
+        background: rgba(168, 85, 247, 0.05);
+        border-color: rgba(168, 85, 247, 0.25);
+    }
+    .lang-tile.selected {
+        background: rgba(168, 85, 247, 0.1);
+        border-color: var(--primary);
+    }
+    .lang-flag { font-size: 1.8rem; line-height: 1; }
+    .lang-name { font-size: 0.82rem; font-weight: 600; }
+    .lang-native { font-size: 0.68rem; color: var(--text-muted); font-weight: 500; }
+
+    /* Update choice */
+    .choice-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        width: 100%;
+        margin-bottom: 22px;
+    }
+    .choice-tile {
+        display: flex;
+        flex-direction: column;
+        padding: 18px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.18s, border-color 0.18s;
+        text-align: left;
+        font-family: 'Inter', sans-serif;
+        color: var(--text-main);
+        gap: 6px;
+    }
+    .choice-tile:hover { background: rgba(168, 85, 247, 0.05); border-color: rgba(168, 85, 247, 0.25); }
+    .choice-tile.selected { background: rgba(168, 85, 247, 0.1); border-color: var(--primary); }
+    .choice-tile-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .choice-tile-icon { color: var(--primary); flex-shrink: 0; }
+    .choice-tile-name { font-size: 0.92rem; font-weight: 700; color: #fff; }
+    .choice-tile-desc { font-size: 0.72rem; color: var(--text-muted); line-height: 1.45; }
+
+    /* Action button */
+    .btn-continue {
+        width: 100%;
+        max-width: 280px;
+        padding: 12px 20px;
+        background: var(--primary);
+        color: #fff;
+        font-family: 'Inter', sans-serif;
+        font-weight: 700;
+        font-size: 0.88rem;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.15s, transform 0.12s;
+        letter-spacing: 0.3px;
+    }
+    .btn-continue:hover { background: var(--primary-hover); }
+    .btn-continue:active { transform: scale(0.98); }
+    .btn-continue:disabled {
+        background: rgba(255,255,255,0.05);
+        color: var(--text-faint);
+        cursor: not-allowed;
+    }
+
+    .footer-hint {
+        padding: 11px 20px;
+        font-size: 0.7rem;
+        color: var(--text-faint);
+        text-align: center;
+        border-top: 1px solid var(--border);
+        font-weight: 500;
+        position: relative;
+        z-index: 1;
+    }
+
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+</head>
+<body>
+
+<div class="card">
+    <div class="brand-row">
+        <div class="brand">
+            <img src="icon.png" alt="BurnedWolf">
+            <span class="brand-name">BURNEDWOLF</span>
+        </div>
+        <span class="step-indicator" id="stepIndicator">Step 1 of 2</span>
+    </div>
+
+    <div class="stage">
+
+        <!-- STEP 1: LANGUAGE -->
+        <div class="step active" id="step-language">
+            <div class="step-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 8l6 6"></path><path d="M4 14l6-6 2-3"></path><path d="M2 5h12"></path><path d="M7 2h1"></path><path d="M22 22l-5-10-5 10"></path><path d="M14 18h6"></path></svg>
+            </div>
+            <div class="title">Choose your language</div>
+            <div class="subtitle">Pick the language you want BurnedWolf to use. You can change it later in settings.</div>
+
+            <div class="lang-grid">
+                <button class="lang-tile" data-lang="en">
+                    <div class="lang-flag">🇬🇧</div>
+                    <div class="lang-name">English</div>
+                    <div class="lang-native">English</div>
+                </button>
+                <button class="lang-tile" data-lang="tr">
+                    <div class="lang-flag">🇹🇷</div>
+                    <div class="lang-name">Turkish</div>
+                    <div class="lang-native">Türkçe</div>
+                </button>
+                <button class="lang-tile" data-lang="ru">
+                    <div class="lang-flag">🇷🇺</div>
+                    <div class="lang-name">Russian</div>
+                    <div class="lang-native">Русский</div>
+                </button>
+            </div>
+
+            <button class="btn-continue" id="btnLangNext" disabled>Continue</button>
+        </div>
+
+        <!-- STEP 2: AUTO-UPDATE -->
+        <div class="step" id="step-update">
+            <div class="step-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+            </div>
+            <div class="title" id="updateTitle">Automatic updates</div>
+            <div class="subtitle" id="updateSubtitle">Should BurnedWolf check for updates automatically on every launch? You can change this later in settings.</div>
+
+            <div class="choice-grid">
+                <button class="choice-tile" data-update="yes">
+                    <div class="choice-tile-head">
+                        <svg class="choice-tile-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <div class="choice-tile-name" id="updateYesName">Yes, enable</div>
+                    </div>
+                    <div class="choice-tile-desc" id="updateYesDesc">Recommended. Always run the latest features and security fixes.</div>
+                </button>
+                <button class="choice-tile" data-update="no">
+                    <div class="choice-tile-head">
+                        <svg class="choice-tile-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <div class="choice-tile-name" id="updateNoName">No, skip</div>
+                    </div>
+                    <div class="choice-tile-desc" id="updateNoDesc">Skip the update check at startup. You can still update manually anytime.</div>
+                </button>
+            </div>
+
+            <button class="btn-continue" id="btnUpdateFinish" disabled>Get started</button>
+        </div>
+
+    </div>
+
+    <div class="footer-hint" id="footerHint">Welcome to BurnedWolf · Setting things up</div>
+</div>
+
+<script src="./onboarding.js"></script>
+</body>
+</html>

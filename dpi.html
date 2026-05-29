@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BurnedWolf - DPI Control Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0A0A14;
+    --surface: #15151F;
+    --surface-2: #1F1F2D;
+    --primary: #A855F7;
+    --primary-hover: #9333EA;
+    --primary-glow: rgba(168, 85, 247, 0.35);
+    --accent: #C084FC;
+    --success: #22C55E;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --text-main: #F4F4F5;
+    --text-muted: #A1A1AA;
+    --text-faint: #71717A;
+    --border: rgba(255, 255, 255, 0.06);
+    --border-strong: rgba(168, 85, 247, 0.18);
+    --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { height: 100%; width: 100%; background: transparent; overflow: hidden; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: var(--text-main);
+    display: flex;
+    padding: 8px;
+    -webkit-user-select: none;
+  }
+
+  /* WINDOW SHELL (outer card wrapper — must NOT collide with inner .card) */
+  .window-shell {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* TITLEBAR */
+  .titlebar {
+    height: 42px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    -webkit-app-region: drag;
+    position: relative;
+    z-index: 2;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding-left: 18px; }
+  .brand img { width: 18px; height: 18px; }
+  .brand-name { font-size: 0.76rem; font-weight: 800; letter-spacing: 0.5px; color: var(--text-main); }
+  .brand-sub {
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 4px 9px;
+    background: rgba(168, 85, 247, 0.08);
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    border-radius: 20px;
+    margin-left: 10px;
+    -webkit-app-region: no-drag;
+  }
+  .window-controls { display: flex; height: 100%; -webkit-app-region: no-drag; }
+  .win-btn { background: transparent; border: none; color: var(--text-muted); width: 46px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: background 0.15s, color 0.15s; }
+  .win-btn:hover { background: rgba(255,255,255,0.05); color: #fff; }
+  #btnClose:hover { background: var(--danger); color: #fff; }
+
+  /* MAIN LAYOUT */
+  .app-body { display: flex; flex: 1; overflow: hidden; position: relative; z-index: 1; }
+
+  /* SIDEBAR */
+  .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px 10px; }
+  .tab-btn { background: transparent; border: none; color: var(--text-muted); padding: 12px 15px; text-align: left; font-size: 0.85rem; font-weight: 600; border-radius: 8px; cursor: pointer; transition: 0.2s; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; }
+  .tab-btn:hover { background: rgba(255,255,255,0.03); color: #fff; }
+  .tab-btn.active { background: rgba(168, 85, 247, 0.1); color: var(--primary); }
+  
+  /* CONTENT AREA */
+  .content-area { flex: 1; padding: 30px; overflow-y: auto; background: var(--bg); position: relative; }
+  .tab-content { display: none; animation: fadeIn 0.3s ease; height: 100%; flex-direction: column; }
+  .tab-content.active { display: flex; }
+
+  h2 { font-size: 1.4rem; font-weight: 800; margin-bottom: 20px; color: #fff; letter-spacing: -0.5px; }
+  .desc { color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 25px; }
+
+  .card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 18px; margin-bottom: 16px; }
+  .card-title { font-weight: 600; font-size: 0.85rem; margin-bottom: 14px; color: #fff; letter-spacing: 0.1px; }
+
+  .mode-select { width: 100%; padding: 10px; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: #fff; border-radius: 5px; font-family: 'Inter', sans-serif; outline: none; margin-bottom: 10px; }
+  .mode-select:focus { border-color: var(--primary); }
+
+  /* === Custom Dropdown (themed replacement for native <select>) === */
+  .bw-select { position: relative; flex: 1; }
+  .bw-select select { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; }
+
+  .bw-select-trigger {
+      width: 100%; padding: 12px 14px; background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border); color: #fff; border-radius: 8px;
+      font-family: 'Inter', sans-serif; font-size: 0.875rem; font-weight: 500;
+      cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; transition: border-color 0.15s, background 0.15s;
+      text-align: left;
+  }
+  .bw-select-trigger:hover { background: rgba(0,0,0,0.4); border-color: rgba(255,255,255,0.1); }
+  .bw-select.open .bw-select-trigger { border-color: var(--primary); }
+  .bw-select-trigger .bw-select-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bw-select-trigger .bw-select-region { font-size: 0.7rem; color: var(--text-muted); font-weight: 600; padding: 2px 7px; border-radius: 3px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); }
+  .bw-select.open .bw-select-trigger .bw-select-region { color: var(--primary); border-color: rgba(168,85,247,0.3); }
+  .bw-chevron { transition: transform 0.2s ease; color: var(--text-muted); flex-shrink: 0; }
+  .bw-select.open .bw-chevron { transform: rotate(180deg); color: var(--primary); }
+
+  .bw-select-panel {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      padding: 5px; max-height: 340px; overflow-y: auto; z-index: 250;
+      display: none;
+  }
+  .bw-select.open .bw-select-panel { display: block; }
+  .bw-select-panel::-webkit-scrollbar { width: 6px; }
+  .bw-select-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+  .bw-select-panel::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+  .bw-select-group-label {
+      font-size: 0.62rem; font-weight: 800; letter-spacing: 0.8px;
+      text-transform: uppercase; color: var(--text-muted);
+      padding: 12px 12px 6px; user-select: none;
+      display: flex; align-items: center; gap: 6px;
+  }
+  .bw-select-group-label::after { content: ''; flex: 1; height: 1px; background: var(--border); margin-left: 6px; }
+
+  .bw-select-option {
+      padding: 9px 12px; border-radius: 6px; font-size: 0.85rem; color: #fff;
+      cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+      transition: background 0.1s; font-weight: 500; gap: 12px;
+  }
+  .bw-select-option:hover { background: rgba(255,255,255,0.05); }
+  .bw-select-option.selected { background: rgba(168, 85, 247, 0.15); color: var(--primary); }
+  .bw-select-option .bw-dot { width: 6px; height: 6px; border-radius: 50%; background: transparent; flex-shrink: 0; transition: 0.15s; }
+  .bw-select-option.selected .bw-dot { background: var(--primary); }
+  /* Recommendation star (set by dpi.js when ISP detection matches a profile) */
+  .bw-rec-star {
+      display: inline-block; margin-right: 6px;
+      color: var(--warning); font-size: 0.8rem; line-height: 1;
+  }
+
+  /* Profile metadata badges (voice / fake-payload / difficulty) */
+  .bw-opt-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bw-opt-meta  { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
+
+  .bw-meta-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 3px;
+      font-size: 0.6rem; font-weight: 700; line-height: 1;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      color: var(--text-muted);
+  }
+  .bw-meta-badge.voice { color: var(--success); border-color: rgba(34,197,94,0.3); }
+  .bw-meta-badge.fake  { color: var(--warning); border-color: rgba(245,158,11,0.3); }
+
+  /* === Network Analysis: Scan mode tiles === */
+  .scan-mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .scan-mode-tile {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px; border-radius: 6px;
+      background: transparent; border: 1px solid var(--border);
+      cursor: pointer; transition: background 0.15s, border-color 0.15s;
+      text-align: left; font-family: 'Inter', sans-serif; color: var(--text-main);
+  }
+  .scan-mode-tile:hover { background: rgba(255,255,255,0.03); }
+  .scan-mode-tile.active {
+      background: rgba(168,85,247,0.06);
+      border-color: rgba(168,85,247,0.3);
+  }
+  .scan-mode-icon {
+      width: 32px; height: 32px; flex-shrink: 0; border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+      color: var(--text-muted);
+  }
+  .scan-mode-tile.active .scan-mode-icon {
+      color: var(--primary); border-color: rgba(168,85,247,0.3);
+  }
+  .scan-mode-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+  .scan-mode-name { font-size: 0.85rem; font-weight: 600; color: #fff; }
+  .scan-mode-meta { font-size: 0.7rem; color: var(--text-muted); }
+
+  .scan-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* === Network Analysis: Progress card === */
+  .scan-progress-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px; gap: 8px;
+  }
+  .scan-progress-phase { font-size: 0.85rem; font-weight: 600; color: #fff; }
+  .scan-progress-count {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 600;
+      color: var(--text-muted);
+  }
+  .scan-progress-track {
+      width: 100%; height: 4px; background: rgba(255,255,255,0.06);
+      border-radius: 2px; overflow: hidden; margin-bottom: 10px;
+  }
+  .scan-progress-fill {
+      height: 100%; width: 0%;
+      background: var(--primary);
+      border-radius: 2px;
+      transition: width 0.3s ease;
+  }
+  .scan-progress-target {
+      font-size: 0.72rem; color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* === Top 3 results === */
+  .top-result-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; margin-bottom: 6px;
+      background: transparent;
+      border: 1px solid var(--border); border-radius: 5px;
+  }
+  .top-result-row:last-child { margin-bottom: 0; }
+  .top-result-row.gold   { border-color: rgba(245,158,11,0.3); }
+
+  .top-medal { font-size: 1.2rem; line-height: 1; flex-shrink: 0; width: 24px; text-align: center; }
+  .top-result-info { flex: 1; min-width: 0; }
+  .top-result-name { font-size: 0.85rem; font-weight: 700; color: #fff; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .top-result-meta { font-size: 0.7rem; color: var(--text-muted); display: flex; gap: 10px; }
+  .top-result-meta .pass { color: var(--success); }
+  .top-result-meta .fail { color: var(--danger); }
+
+  /* Difficulty dots — 4 slots, filled count = aggression level */
+  .bw-meta-diff {
+      display: inline-flex; align-items: center; gap: 2px;
+      padding: 2px 4px; border-radius: 5px;
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+  }
+  .bw-diff-dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.12); }
+  .bw-diff-dot.on { background: var(--text-muted); }
+  .bw-diff-low      .bw-diff-dot.on { background: var(--text-muted); }
+  .bw-diff-medium   .bw-diff-dot.on { background: var(--success); }
+  .bw-diff-high     .bw-diff-dot.on { background: var(--warning); }
+  .bw-diff-extreme  .bw-diff-dot.on { background: var(--danger); }
+
+  /* Failover toggle row inside the Active Shield Mode card */
+  .failover-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      margin-top: 14px; padding-top: 14px;
+      border-top: 1px solid var(--border);
+  }
+  .failover-label { display: flex; flex-direction: column; gap: 3px; cursor: pointer; flex: 1; min-width: 0; }
+  .failover-title { font-size: 0.85rem; font-weight: 600; color: #fff; }
+  .failover-hint  { font-size: 0.72rem; color: var(--text-muted); line-height: 1.35; }
+
+  /* iOS-style switch (reused from titlebar) */
+  .switch { position: relative; display: inline-block; width: 42px; height: 22px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+      position: absolute; cursor: pointer; inset: 0;
+      background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border-strong);
+      transition: background 0.25s, border-color 0.25s; border-radius: 22px;
+  }
+  .slider:before {
+      position: absolute; content: ""; height: 14px; width: 14px;
+      left: 3px; bottom: 3px;
+      background: var(--text-muted); transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), background 0.25s;
+      border-radius: 50%;
+  }
+  input:checked + .slider { background: var(--primary); border-color: var(--primary-hover); }
+  input:checked + .slider:before { transform: translateX(20px); background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
+  .switch input:disabled + .slider { opacity: 0.4; cursor: not-allowed; }
+
+  .whitelist-area { width: 100%; height: 150px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: #fff; border-radius: 8px; padding: 15px; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; resize: none; outline: none; }
+  .whitelist-area:focus { border-color: var(--primary); }
+
+  .checkbox-group { display: flex; align-items: center; gap: 10px; margin-top: 15px; cursor: pointer; }
+  .checkbox-group input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+  .checkbox-group label { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; cursor: pointer; }
+
+  .btn { padding: 10px 16px; font-weight: 600; font-size: 0.85rem; border: none; border-radius: 5px; cursor: pointer; transition: background 0.15s; font-family: 'Inter', sans-serif; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-primary { background: var(--primary); color: #fff; width: 100%; }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-stop { background: transparent; border: 1px solid var(--danger); color: var(--danger); width: 100%; display: none; }
+  .btn-stop:hover { background: rgba(239, 68, 68, 0.08); }
+  .btn-action { background: rgba(255,255,255,0.04); color: #fff; border: 1px solid var(--border); }
+  .btn-action:hover { background: rgba(255,255,255,0.08); }
+
+  .terminal { background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 8px; padding: 15px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-muted); height: 250px; overflow-y: auto; margin-top: 20px; }
+  .log-line { margin-bottom: 5px; line-height: 1.4; }
+
+  .status-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+  .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 20px; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+
+  /* Engine health pill — populated by dpi.js while engine is running */
+  .health-pill {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 5px 11px; background: transparent;
+      border: 1px solid var(--border); border-radius: 5px;
+      font-size: 0.72rem; font-weight: 600; color: var(--text-muted);
+  }
+  .health-pill .health-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--text-muted);
+  }
+  .health-pill .health-label { color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; font-size: 0.62rem; }
+  .health-pill .health-value { font-family: 'JetBrains Mono', monospace; color: #fff; font-weight: 600; font-size: 0.75rem; }
+  .health-pill .health-meta  { color: var(--text-muted); font-size: 0.7rem; font-weight: 500; }
+
+  .health-pill.good     { background: rgba(34,197,94,0.06);  border-color: rgba(34,197,94,0.35);  color: var(--success); }
+  .health-pill.good     .health-dot { background: var(--success); }
+  .health-pill.good     .health-value { color: var(--success); }
+
+  .health-pill.warn     { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.35); color: var(--warning); }
+  .health-pill.warn     .health-dot { background: var(--warning); }
+  .health-pill.warn     .health-value { color: var(--warning); }
+
+  .health-pill.bad      { background: rgba(239,68,68,0.06);  border-color: rgba(239,68,68,0.4);   color: var(--danger); }
+  .health-pill.bad      .health-dot { background: var(--danger); }
+  .health-pill.bad      .health-value { color: var(--danger); }
+
+  .health-pill.warming  { background: rgba(168,85,247,0.06); border-color: rgba(168,85,247,0.3); color: var(--primary); }
+  .health-pill.warming  .health-dot { background: var(--primary); }
+
+  /* ISP auto-detection banner */
+  .isp-banner {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    padding: 12px 14px; margin-bottom: 18px;
+    background: rgba(168, 85, 247, 0.05);
+    border: 1px solid rgba(168, 85, 247, 0.18);
+    border-radius: 6px;
+  }
+  .isp-banner.unknown {
+    background: rgba(245, 158, 11, 0.04);
+    border-color: rgba(245, 158, 11, 0.18);
+  }
+  .isp-info { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+  .isp-icon { color: var(--primary); flex-shrink: 0; }
+  .isp-banner.unknown .isp-icon { color: var(--warning); }
+  .isp-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .isp-label { font-size: 0.85rem; font-weight: 600; color: #fff; }
+  .isp-label span { color: var(--primary); }
+  .isp-banner.unknown .isp-label span { color: var(--warning); }
+  .isp-hint { font-size: 0.72rem; color: var(--text-muted); }
+  .btn-isp-apply {
+    padding: 6px 12px; border-radius: 5px; border: 1px solid rgba(168, 85, 247, 0.3);
+    background: rgba(168, 85, 247, 0.08); color: var(--primary);
+    font-family: 'Inter', sans-serif; font-size: 0.75rem; font-weight: 600;
+    cursor: pointer; transition: background 0.15s; white-space: nowrap;
+  }
+  .btn-isp-apply:hover { background: rgba(168, 85, 247, 0.16); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+  .status-badge.running .dot { background: var(--success); }
+  .status-badge.running { color: var(--success); border-color: rgba(34, 197, 94, 0.3); }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<div class="window-shell">
+
+<div class="titlebar">
+  <div class="brand">
+    <img src="icon.png" alt="BW">
+    <span class="brand-name">BURNEDWOLF</span>
+    <span class="brand-sub" data-i18n="dpi.brand_sub">DPI Shield</span>
+  </div>
+  <div class="window-controls">
+    <button class="win-btn" id="btnMin" title="Minimize"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+    <button class="win-btn" id="btnMax" title="Maximize"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></button>
+    <button class="win-btn" id="btnClose" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+  </div>
+</div>
+
+<div class="app-body">
+    <div class="sidebar">
+        <button class="tab-btn active" onclick="openTab('dashboard', event)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+            <span data-i18n="dpi.tab_dashboard">Dashboard</span>
+        </button>
+        <button class="tab-btn" onclick="openTab('whitelist', event)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <span data-i18n="dpi.tab_whitelist">Target Whitelist</span>
+        </button>
+        <button class="tab-btn" onclick="openTab('blockcheck', event)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+            <span data-i18n="dpi.tab_analysis">Network Analysis</span>
+        </button>
+    </div>
+
+    <div class="content-area">
+        <div id="dashboard" class="tab-content active">
+            <h2 data-i18n="dpi.shield_control">Shield Control</h2>
+            <div class="status-row">
+                <div class="status-badge" id="dpiStatus"><div class="dot"></div> <span id="dpiStatusTxt" data-i18n="dpi.engine_stopped">Engine Stopped</span></div>
+                <div class="health-pill" id="healthPill" style="display:none;">
+                    <div class="health-dot"></div>
+                    <span class="health-label" data-i18n="dpi.health_label">Health</span>
+                    <span class="health-value" id="healthValue">—</span>
+                    <span class="health-meta" id="healthMeta"></span>
+                </div>
+            </div>
+
+            <!-- ISP auto-detection banner — populated by dpi.js on open -->
+            <div id="ispBanner" class="isp-banner" style="display:none;">
+                <div class="isp-info">
+                    <svg class="isp-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                    <div class="isp-text">
+                        <div class="isp-label"><span data-i18n="dpi.isp_detected">Detected ISP:</span> <span id="ispName">…</span></div>
+                        <div class="isp-hint" id="ispHint" data-i18n="dpi.isp_hint_default">Recommended profiles are marked with ★ in the dropdown.</div>
+                    </div>
+                </div>
+                <button class="btn-isp-apply" id="btnApplyIsp" data-i18n="dpi.isp_apply_best" style="display:none;">Apply best</button>
+            </div>
+
+            <div class="card">
+                <div class="card-title" data-i18n="dpi.active_shield_mode">Active Shield Mode</div>
+                <div style="display: flex; gap: 10px; width: 100%;">
+                    <select class="mode-select" id="zapretMode" style="flex: 1;">
+                        <!-- Built-in profiles populated dynamically from main process by dpi.js -->
+                        <optgroup label="System Generated" id="customGroup" style="display:none;">
+                            <option value="custom" id="customOption">Custom Analysis Profile Loaded</option>
+                        </optgroup>
+                    </select>
+                    <button class="btn btn-action" id="btnDeleteCustom" title="Delete Custom Profile" style="display:none; padding: 0 15px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </div>
+
+                <div class="failover-row">
+                    <label class="failover-label" for="failoverToggle">
+                        <span class="failover-title" data-i18n="dpi.failover_title">Auto-failover</span>
+                        <span class="failover-hint" id="failoverHint" data-i18n="dpi.failover_hint">Rotate to next recommended profile if Discord becomes unreachable.</span>
+                    </label>
+                    <label class="switch">
+                        <input type="checkbox" id="failoverToggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" id="btnStartZapret" data-i18n="dpi.btn_start">Start Engine</button>
+            <button class="btn btn-stop" id="btnStopZapret" data-i18n="dpi.btn_stop">Stop Engine</button>
+
+            <div class="terminal" id="mainTerminal" style="height: 180px;">
+                <div class="log-line" data-i18n="dpi.terminal_ready">> BurnedWolf shield module ready. Awaiting command.</div>
+            </div>
+        </div>
+
+        <div id="whitelist" class="tab-content">
+            <h2 data-i18n="dpi.tab_whitelist">Target Whitelist</h2>
+            <p class="desc" data-i18n="dpi.whitelist_desc">Hostlist-Auto is active. Shield will only trigger on specified or automatically detected blocked domains.</p>
+
+            <div class="card">
+                <div class="card-title" data-i18n="dpi.whitelist_card_title">Allowed / Blocked Domains</div>
+                <textarea class="whitelist-area" id="whitelistInput" spellcheck="false" placeholder="discord.com&#10;youtube.com"></textarea>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="autoWhitelistToggle" checked>
+                    <label for="autoWhitelistToggle" data-i18n="dpi.whitelist_dynamic">Dynamic Listing (Hostlist-Auto) Active</label>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title" data-i18n="dpi.tr_master_title">Turkey Master Blocked List</div>
+                <p class="desc" data-i18n="dpi.tr_master_desc" style="margin-bottom:14px;">Bundled list of Turkey-blocked / throttled domains (Discord, Roblox, YouTube, X, Mega, Twitch, Reddit, VPN sites). Applied as a second hostlist alongside your own — DPI bypass only triggers on these targets, leaving the rest of the web full-speed.</p>
+                <div class="failover-row" style="margin-top:0; padding-top:0; border-top:none;">
+                    <label class="failover-label" for="trMasterToggle">
+                        <span class="failover-title" data-i18n="dpi.tr_master_apply">Apply Turkey master list</span>
+                        <span class="failover-hint" id="trMasterCount">— domains bundled.</span>
+                    </label>
+                    <label class="switch">
+                        <input type="checkbox" id="trMasterToggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <button class="btn btn-action" id="btnSaveWhitelist" data-i18n="dpi.btn_save_config">Save Configuration</button>
+            <span id="saveStatus" data-i18n="dpi.saved" style="font-size:0.8rem; color:var(--success); margin-left:10px; display:none;">Saved successfully!</span>
+        </div>
+
+        <div id="blockcheck" class="tab-content">
+            <h2 data-i18n="dpi.tab_analysis">Dynamic Network Analysis</h2>
+            <p class="desc" data-i18n="dpi.analysis_desc">Tests every profile against Discord, YouTube, X, Roblox, and Twitch — both HTTP/HTTPS and voice UDP. Synthesizes a custom mutation if no built-in profile passes (Deep mode only).</p>
+
+            <!-- Scan mode selector -->
+            <div class="card" id="scanModeCard">
+                <div class="card-title" data-i18n="dpi.scan_mode">Scan Mode</div>
+                <div class="scan-mode-grid">
+                    <button class="scan-mode-tile active" id="btnQuickScan" data-mode="quick">
+                        <div class="scan-mode-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                        </div>
+                        <div class="scan-mode-info">
+                            <div class="scan-mode-name" data-i18n="dpi.scan_quick">Quick Scan</div>
+                            <div class="scan-mode-meta" data-i18n="dpi.scan_quick_meta">~1–2 min · ISP-recommended profiles only</div>
+                        </div>
+                    </button>
+                    <button class="scan-mode-tile" id="btnDeepScan" data-mode="deep">
+                        <div class="scan-mode-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><line x1="12" y1="3" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="21"></line><line x1="3" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="21" y2="12"></line></svg>
+                        </div>
+                        <div class="scan-mode-info">
+                            <div class="scan-mode-name" data-i18n="dpi.scan_deep">Deep Scan</div>
+                            <div class="scan-mode-meta" data-i18n="dpi.scan_deep_meta">~5–8 min · all profiles + mutation engine</div>
+                        </div>
+                    </button>
+                </div>
+
+                <div class="scan-actions">
+                    <button class="btn btn-primary" id="btnRunBlockcheck" data-i18n="dpi.btn_start_quick" style="flex:1;">Start Quick Scan</button>
+                    <button class="btn btn-stop" id="btnCancelBlockcheck" data-i18n="dpi.btn_cancel_scan" style="display:none; flex:1;">Cancel Scan</button>
+                    <button class="btn btn-action" id="btnDownloadReport" data-i18n="dpi.btn_download_report" style="display:none; border-color:var(--success); color:var(--success);">Download Report</button>
+                </div>
+            </div>
+
+            <!-- Progress card (hidden until scan starts) -->
+            <div class="card" id="scanProgressCard" style="display:none;">
+                <div class="scan-progress-head">
+                    <div class="scan-progress-phase" id="scanPhaseLabel" data-i18n="dpi.scan_initializing">Initializing…</div>
+                    <div class="scan-progress-count" id="scanProgressCount">0 / 0</div>
+                </div>
+                <div class="scan-progress-track"><div class="scan-progress-fill" id="scanProgressFill"></div></div>
+                <div class="scan-progress-target" id="scanProgressTarget">—</div>
+            </div>
+
+            <!-- Top 3 results (hidden until scan finishes) -->
+            <div class="card" id="topResultsCard" style="display:none;">
+                <div class="card-title" data-i18n="dpi.top_results_title">Top 3 Results</div>
+                <div id="topResultsList"></div>
+            </div>
+
+            <div class="terminal" id="blockcheckTerminal" style="margin-top:0; height:200px;">
+                <div class="log-line" data-i18n="dpi.analysis_terminal_ready">&gt; System ready for analysis. Pick a scan mode above.</div>
+                <div class="log-line">> System ready for analysis. Pick a scan mode above.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div><!-- /.window-shell -->
+
+<script src="./dpi.js"></script>
+</body>
+</html>

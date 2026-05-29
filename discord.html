@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BurnedWolf — Discord Tunnel</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --bg: #0A0A14;
+        --surface: #15151F;
+        --surface-2: #1F1F2D;
+        --primary: #A855F7;
+        --primary-hover: #9333EA;
+        --primary-glow: rgba(168, 85, 247, 0.3);
+        --success: #22C55E;
+        --warning: #F59E0B;
+        --danger: #EF4444;
+        --text-main: #F4F4F5;
+        --text-muted: #A1A1AA;
+        --text-faint: #71717A;
+        --border: rgba(255, 255, 255, 0.06);
+        --border-strong: rgba(255, 255, 255, 0.1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; width: 100%; background: transparent; overflow: hidden; }
+    body {
+        font-family: 'Inter', -apple-system, sans-serif;
+        color: var(--text-main);
+        display: flex;
+        padding: 8px;
+        -webkit-user-select: none;
+    }
+
+    .card {
+        flex: 1;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+    }
+
+    /* TITLEBAR */
+    .titlebar {
+        height: 42px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border);
+        -webkit-app-region: drag;
+        position: relative;
+        z-index: 2;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; padding-left: 18px; }
+    .brand img { width: 18px; height: 18px; }
+    .brand-name { font-size: 0.76rem; font-weight: 800; letter-spacing: 0.5px; }
+    .brand-sub {
+        font-size: 0.62rem;
+        font-weight: 700;
+        color: var(--primary);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        padding: 4px 9px;
+        background: rgba(168, 85, 247, 0.08);
+        border: 1px solid rgba(168, 85, 247, 0.2);
+        border-radius: 20px;
+        margin-left: 10px;
+        -webkit-app-region: no-drag;
+    }
+    .status-indicator {
+        font-size: 0.66rem;
+        font-weight: 700;
+        color: var(--warning);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        padding: 4px 10px;
+        border-radius: 20px;
+        background: rgba(245, 158, 11, 0.08);
+        letter-spacing: 0.3px;
+        margin-left: 8px;
+        -webkit-app-region: no-drag;
+        transition: all 0.3s;
+    }
+    .window-controls { display: flex; height: 100%; -webkit-app-region: no-drag; }
+    .win-btn { background: transparent; border: none; color: var(--text-muted); width: 46px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: background 0.15s, color 0.15s; }
+    .win-btn:hover { background: rgba(255,255,255,0.05); color: #fff; }
+    #btnClose:hover { background: var(--danger); color: #fff; }
+
+    /* GATEWAY UI */
+    #gatewayLayer {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 30px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .auth-box {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 32px;
+        width: 100%;
+        max-width: 420px;
+        text-align: center;
+    }
+
+    .auth-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 10px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0 auto 16px;
+        background: rgba(168, 85, 247, 0.08);
+        border: 1px solid rgba(168, 85, 247, 0.25);
+        color: var(--primary);
+    }
+
+    .auth-box h2 {
+        color: #fff;
+        margin-bottom: 8px;
+        font-size: 1.2rem;
+        font-weight: 700;
+        letter-spacing: -0.3px;
+    }
+    .auth-box p {
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        margin-bottom: 26px;
+        line-height: 1.55;
+    }
+
+    .input-group { margin-bottom: 16px; text-align: left; }
+    .input-group label {
+        display: block;
+        font-size: 0.66rem;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+    .input-group input {
+        width: 100%;
+        background: rgba(0,0,0,0.3);
+        border: 1px solid var(--border-strong);
+        color: #fff;
+        padding: 11px 14px;
+        border-radius: 8px;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.88rem;
+        outline: none;
+        transition: border-color 0.2s, background 0.2s;
+    }
+    .input-group input:focus { border-color: var(--primary); background: rgba(168, 85, 247, 0.04); }
+
+    .btn {
+        width: 100%;
+        padding: 11px;
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+        font-size: 0.85rem;
+        border: 1px solid transparent;
+        border-radius: 9px;
+        cursor: pointer;
+        transition: background 0.18s, border-color 0.18s, transform 0.12s;
+        margin-bottom: 8px;
+        outline: none;
+        letter-spacing: 0.1px;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary {
+        background: var(--primary);
+        color: #fff;
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary {
+        background: transparent;
+        color: var(--text-muted);
+        border-color: var(--border-strong);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.05); color: #fff; border-color: rgba(255,255,255,0.2); }
+    .btn-danger {
+        background: transparent;
+        color: var(--danger);
+        border-color: rgba(239, 68, 68, 0.25);
+        margin-top: 6px;
+    }
+    .btn-danger:hover { background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.5); }
+
+    /* SAVED ACCOUNT */
+    .saved-info {
+        margin-bottom: 22px;
+        background: rgba(0,0,0,0.25);
+        padding: 18px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+    }
+    .saved-info span {
+        color: var(--text-muted);
+        font-size: 0.66rem;
+        font-weight: 700;
+        display: block;
+        margin-bottom: 6px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+    .saved-info strong { color: #fff; font-size: 0.95rem; font-weight: 600; }
+
+    /* LOADER */
+    .loader-container {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 14px;
+        animation: fadeIn 0.3s ease;
+    }
+    .spinner {
+        width: 22px;
+        height: 22px;
+        border: 2px solid transparent;
+        border-top-color: var(--primary);
+        border-right-color: rgba(168, 85, 247, 0.4);
+        border-radius: 50%;
+        animation: spin 1.4s cubic-bezier(0.6, 0.2, 0.4, 0.8) infinite;
+        margin-bottom: 10px;
+    }
+    .loader-text { color: var(--text-muted); font-size: 0.78rem; font-weight: 500; }
+
+    /* DISCORD WEBVIEW */
+    #discordWebview { flex: 1; border: none; display: none; background: #2B2D31; position: relative; z-index: 1; }
+
+    @keyframes slideUpFade { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn      { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes spin        { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="card">
+
+<div class="titlebar">
+    <div class="brand">
+        <img src="icon.png" alt="BW">
+        <span class="brand-name">BURNEDWOLF</span>
+        <span class="brand-sub" data-i18n="discord.brand_sub">Discord</span>
+        <span id="topStatus" class="status-indicator" data-i18n="discord.status_offline">TOR · OFFLINE</span>
+    </div>
+    <div class="window-controls">
+        <button class="win-btn" id="btnMin" title="Minimize"><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+        <button class="win-btn" id="btnMax" title="Maximize"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></button>
+        <button class="win-btn" id="btnClose" title="Close"><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+    </div>
+</div>
+
+<div id="gatewayLayer">
+    <div class="auth-box">
+        <div class="auth-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        </div>
+        <h2 data-i18n="discord.new_login_title">Account Setup</h2>
+        <p id="authDesc" data-i18n="discord.new_login_desc">Your account credentials are saved locally on this device only.</p>
+
+        <div id="newLoginForm">
+            <div class="input-group">
+                <label data-i18n="common.email">Email</label>
+                <input type="email" id="txtEmail" placeholder="example@mail.com" spellcheck="false">
+            </div>
+            <div class="input-group">
+                <label data-i18n="common.password">Password</label>
+                <input type="password" id="txtPass" placeholder="••••••••••••">
+            </div>
+            <button class="btn btn-primary" id="btnSaveLogin" data-i18n="discord.btn_save_login">Save & Login</button>
+            <button class="btn btn-secondary" id="btnSkip" data-i18n="discord.btn_skip">Continue without saving</button>
+        </div>
+
+        <div id="savedAccountForm" style="display: none;">
+            <div class="saved-info">
+                <span data-i18n="discord.saved_email_label">Account</span>
+                <strong id="savedEmailDisplay"></strong>
+            </div>
+            <button class="btn btn-primary" id="btnUseSaved" data-i18n="discord.btn_use_saved">Use Saved Account</button>
+            <button class="btn btn-secondary" id="btnSkipSaved" data-i18n="discord.btn_skip_saved">Use Different Account</button>
+            <button class="btn btn-danger" id="btnDeleteSaved" data-i18n="discord.btn_delete_saved">Forget saved credentials</button>
+        </div>
+
+        <div class="loader-container" id="loaderContainer">
+            <div class="spinner"></div>
+            <div class="loader-text" data-i18n="discord.loader_text">Securing connection…</div>
+        </div>
+    </div>
+</div>
+
+<!-- contextIsolation + nodeIntegration=no kept for security; sandbox removed
+     because Chromium sandboxed renderers silently reject getUserMedia; and
+     autoplayPolicy added so incoming WebRTC audio plays without user gesture. -->
+<webview id="discordWebview" src="about:blank" partition="persist:discordPartition" allowpopups="false" webpreferences="contextIsolation=yes,nodeIntegration=no,autoplayPolicy=no-user-gesture-required"></webview>
+
+</div><!-- /.card -->
+
+<script src="./discord.js"></script>
+</body>
+</html>

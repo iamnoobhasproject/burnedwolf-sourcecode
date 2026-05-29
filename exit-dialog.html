@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Shutting Down</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --bg: #0A0A14;
+        --surface: #15151F;
+        --primary: #A855F7;
+        --primary-glow: rgba(168, 85, 247, 0.35);
+        --text-main: #F4F4F5;
+        --text-muted: #A1A1AA;
+        --text-faint: #71717A;
+        --border: rgba(255, 255, 255, 0.06);
+        --border-strong: rgba(255, 255, 255, 0.1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; }
+
+    html, body { height: 100%; width: 100%; background: transparent; overflow: hidden; }
+
+    body {
+        font-family: 'Inter', -apple-system, sans-serif;
+        color: var(--text-main);
+        display: flex;
+        -webkit-app-region: drag;
+        padding: 8px;
+    }
+
+    .card {
+        flex: 1;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .brand-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+        z-index: 1;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand img { width: 20px; height: 20px; }
+    .brand-name { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.4px; }
+    .brand-sub {
+        font-size: 0.62rem;
+        font-weight: 700;
+        color: var(--primary);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        padding: 4px 9px;
+        background: rgba(168, 85, 247, 0.08);
+        border: 1px solid rgba(168, 85, 247, 0.2);
+        border-radius: 20px;
+    }
+
+    .stage {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 32px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        max-width: 360px;
+        animation: stateIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .icon-orb {
+        width: 60px;
+        height: 60px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 18px;
+        background: rgba(168, 85, 247, 0.08);
+        border: 1px solid rgba(168, 85, 247, 0.25);
+        position: relative;
+    }
+    .icon-orb img { width: 30px; height: 30px; object-fit: contain; }
+
+    .ring-spinner {
+        position: absolute;
+        inset: -5px;
+        border-radius: 12px;
+        pointer-events: none;
+    }
+    .ring-spinner::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        border-top-color: var(--primary);
+        animation: spin 1s linear infinite;
+    }
+
+    .title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: -0.3px;
+        margin-bottom: 6px;
+    }
+    .subtitle {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        line-height: 1.55;
+        max-width: 300px;
+    }
+
+    .progress-track {
+        width: 220px;
+        height: 4px;
+        margin-top: 22px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+    }
+    .progress-track::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent 0%, var(--primary) 50%, transparent 100%);
+        animation: sweep 1.6s ease-in-out infinite;
+    }
+
+    .footer-hint {
+        padding: 11px 20px;
+        font-size: 0.7rem;
+        color: var(--text-faint);
+        text-align: center;
+        border-top: 1px solid var(--border);
+        font-weight: 500;
+        letter-spacing: 0.2px;
+        position: relative;
+        z-index: 1;
+    }
+
+    @keyframes spin    { to { transform: rotate(360deg); } }
+    @keyframes sweep   { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+    @keyframes stateIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<div class="card">
+
+    <div class="brand-row">
+        <div class="brand">
+            <img src="icon.png" alt="BurnedWolf">
+            <span class="brand-name">BURNEDWOLF</span>
+        </div>
+        <span class="brand-sub" data-i18n="exit.brand_sub">Shutting down</span>
+    </div>
+
+    <div class="stage">
+        <div class="state">
+            <div class="icon-orb">
+                <div class="ring-spinner"></div>
+                <img src="icon.png" alt="BurnedWolf">
+            </div>
+            <div class="title" data-i18n="exit.title">Terminating Session</div>
+            <div class="subtitle" data-i18n="exit.sub">Closing secure tunnels and clearing network hooks…</div>
+            <div class="progress-track"></div>
+        </div>
+    </div>
+
+    <div class="footer-hint" data-i18n="exit.footer">
+        It's safe to close — all background processes will be terminated.
+    </div>
+
+</div>
+
+<script src="./exit-dialog.js"></script>
+</body>
+</html>

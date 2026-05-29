@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+package-lock.json.backup
+
+# Build output
+build/
+dist/
+out/
+*.exe.bak
+update.zip
+update_temp/
+update_system.bat
+update_hidden.vbs
+
+# Runtime / user data (should never be committed)
+tor-data/
+tor-bin/
+zapret-bin/
+net.zip
+net_temp/
+*.log
+
+# Settings + cache
+settings.json
+*.pem
+*.key
+
+# OS junk
+.DS_Store
+Thumbs.db
+Desktop.ini
+*~
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Obfuscation artifacts (if not running obfuscator before commit)
+*.obfuscated.js
+
+# Misc
+--debug
+*.tmp

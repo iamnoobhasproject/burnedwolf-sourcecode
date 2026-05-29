@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BurnedWolf — System Integrity</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --bg: #0A0A14;
+        --surface: #15151F;
+        --surface-2: #1F1F2D;
+        --primary: #A855F7;
+        --primary-hover: #9333EA;
+        --primary-glow: rgba(168, 85, 247, 0.35);
+        --success: #22C55E;
+        --success-glow: rgba(34, 197, 94, 0.3);
+        --warning: #F59E0B;
+        --danger: #EF4444;
+        --text-main: #F4F4F5;
+        --text-muted: #A1A1AA;
+        --text-faint: #71717A;
+        --border: rgba(255, 255, 255, 0.06);
+        --border-strong: rgba(255, 255, 255, 0.1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; }
+
+    html, body { height: 100%; width: 100%; background: transparent; overflow: hidden; }
+
+    body {
+        font-family: 'Inter', -apple-system, sans-serif;
+        color: var(--text-main);
+        display: flex;
+        padding: 8px;
+    }
+
+    .card {
+        flex: 1;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+        transition: border-color 0.3s ease;
+    }
+    .card.success { border-color: rgba(34, 197, 94, 0.35); }
+
+    /* TITLEBAR */
+    .titlebar {
+        height: 42px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border);
+        -webkit-app-region: drag;
+        position: relative;
+        z-index: 2;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; padding-left: 18px; }
+    .brand img { width: 18px; height: 18px; }
+    .brand-name { font-size: 0.76rem; font-weight: 800; letter-spacing: 0.5px; }
+    .brand-sub {
+        font-size: 0.62rem;
+        font-weight: 700;
+        color: var(--primary);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        padding: 4px 9px;
+        background: rgba(168, 85, 247, 0.08);
+        border: 1px solid rgba(168, 85, 247, 0.2);
+        border-radius: 20px;
+        margin-left: 10px;
+        -webkit-app-region: no-drag;
+    }
+    .window-controls { display: flex; height: 100%; -webkit-app-region: no-drag; }
+    .win-btn { background: transparent; border: none; color: var(--text-muted); width: 46px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: background 0.15s, color 0.15s; }
+    .win-btn:hover { background: rgba(255, 255, 255, 0.05); color: #fff; }
+    #btnClose:hover { background: var(--danger); color: #fff; }
+
+    /* CONTENT */
+    .content {
+        flex: 1;
+        padding: 26px 30px 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        z-index: 1;
+        overflow: hidden;
+    }
+
+    .hero-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 10px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 14px;
+        background: rgba(168, 85, 247, 0.08);
+        border: 1px solid rgba(168, 85, 247, 0.25);
+        color: var(--primary);
+    }
+    h2 {
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: #fff;
+        letter-spacing: -0.4px;
+        margin-bottom: 6px;
+        text-align: center;
+    }
+    p.desc {
+        color: var(--text-muted);
+        font-size: 0.82rem;
+        text-align: center;
+        margin-bottom: 22px;
+        max-width: 480px;
+        line-height: 1.5;
+    }
+
+    /* PROGRESS CARD */
+    .progress-wrapper {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px 20px;
+        margin-bottom: 18px;
+    }
+    .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .phase-text {
+        font-size: 0.7rem;
+        font-weight: 800;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+    }
+    .percent-badge {
+        background: rgba(168, 85, 247, 0.08);
+        color: var(--primary);
+        padding: 4px 11px;
+        border-radius: 6px;
+        font-weight: 800;
+        font-size: 0.78rem;
+        border: 1px solid rgba(168, 85, 247, 0.2);
+        font-family: 'JetBrains Mono', monospace;
+        transition: all 0.3s;
+    }
+    .progress-track {
+        width: 100%;
+        height: 6px;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+    }
+    .progress-fill {
+        height: 100%;
+        background: var(--primary);
+        width: 0%;
+        border-radius: 10px;
+        transition: width 0.3s ease, background 0.3s;
+    }
+    .active-file {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.72rem;
+        color: var(--text-faint);
+        margin-top: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* TERMINAL */
+    .terminal {
+        width: 100%;
+        flex: 1;
+        min-height: 140px;
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 16px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        overflow-y: auto;
+        margin-bottom: 18px;
+        line-height: 1.55;
+    }
+    .log-line {
+        margin-bottom: 4px;
+        animation: fadeIn 0.3s ease forwards;
+    }
+
+    /* PRIMARY BUTTON */
+    .btn-start {
+        background: var(--primary);
+        color: #fff;
+        padding: 12px 26px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        font-family: 'Inter', sans-serif;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background 0.18s, transform 0.12s, box-shadow 0.2s;
+        width: 100%;
+        max-width: 360px;
+        letter-spacing: 0.4px;
+        outline: none;
+    }
+    .btn-start:hover { background: var(--primary-hover); }
+    .btn-start:active { transform: scale(0.98); }
+    .btn-start:disabled {
+        background: rgba(255,255,255,0.03);
+        color: var(--text-muted);
+        cursor: not-allowed;
+        box-shadow: none;
+        border: 1px solid var(--border-strong);
+    }
+
+    /* FOOTER */
+    .footer-hint {
+        padding: 11px 22px;
+        font-size: 0.7rem;
+        color: var(--text-faint);
+        text-align: center;
+        border-top: 1px solid var(--border);
+        font-weight: 500;
+        letter-spacing: 0.2px;
+        position: relative;
+        z-index: 1;
+    }
+
+    @keyframes shimmer { to { transform: translateX(100%); } }
+    @keyframes fadeIn  { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+</style>
+</head>
+<body>
+
+<div class="card" id="card">
+
+    <div class="titlebar">
+        <div class="brand">
+            <img src="icon.png" alt="BW">
+            <span class="brand-name">BURNEDWOLF</span>
+            <span class="brand-sub" data-i18n="verify.brand_sub">Integrity</span>
+        </div>
+        <div class="window-controls">
+            <button class="win-btn" id="btnMin" title="Minimize">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+            <button class="win-btn" id="btnClose" title="Close">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="hero-icon">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
+        </div>
+        <h2 data-i18n="verify.title">System Integrity Check</h2>
+        <p class="desc" data-i18n="verify.desc">Verifies your local installation against the original server files. Repairs any missing or corrupt components automatically.</p>
+
+        <div class="progress-wrapper">
+            <div class="progress-header">
+                <span class="phase-text" id="phaseText" data-i18n="verify.phase_idle">READY TO START</span>
+                <span class="percent-badge" id="percentText">0%</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" id="progressBar"></div>
+            </div>
+            <div class="active-file" id="activeFileText">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.5;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span data-i18n="verify.phase_idle">Ready to start</span>
+            </div>
+        </div>
+
+        <div class="terminal" id="verifyTerminal">
+            <div class="log-line" data-i18n="verify.terminal_ready">&gt; Initiating integrity verification…</div>
+        </div>
+
+        <button class="btn-start" id="btnStartVerify" data-i18n="verify.btn_start">Start Integrity Check</button>
+    </div>
+
+    <div class="footer-hint">
+        SHA-256 hash verified · safe to repair missing or tampered files
+    </div>
+
+</div>
+
+<script src="./verify.js"></script>
+</body>
+</html>
