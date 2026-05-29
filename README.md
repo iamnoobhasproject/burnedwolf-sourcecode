@@ -1,4 +1,15 @@
-# 🐺 BurnedWolf
+Merhaba dostlar, öncelikle belirtmeliyim ki bu programı yaparken yapay zekadan oldukça yardım aldım ve tamamen stabil ve düzgün bir sistem oturttuktan sonra paylaşmaya karar verdim.
+https://iamnoobhasproject.github.io/burnedwolf/ Projenin github page ine buradan ulaşabilirsiniz bu sayfa bilgilendirme amaçlı.
+
+Programı yaparken veya paylaşırken hiçbir para kazanma amacı gütmedim. Sadece kendim ve arkadaşlarımın rahatça kullanarak discorda ve engellenen her siteye, oyuna veya sunucuya erişebilmesini istediğim için ve GoodbyeDpi gibi hazır sistemlerin bazı oyunlarda hatalarda sebebiyet verdiğini gördüğüm için bu programı yaptım.
+
+Program electron altyapısıyla yapılmıştır incelemek isteyen kişi eğer bilgili bir kişi ise; dosya konumundan app.asar dosyasını açarak javascript ve html kodlarını inceleyebilir.
+
+Programda 2 ana uygulama mevcut; İlk olarak Tor Ağı üzerinden proxy şeklinde bağlantı sağlayan Discord'un ta kendisi. İkinci olarak ise Zapret altyapısı üzerinden çalışan ve tüm internet sağlayıcılarında rahatça çalışan bir DPI sistemi. DPI sistemi çok gelişmiş hem global hem de türkiyeye yoğun olarak her türden profil içinde bulunmakta. Ayrıca profillerin çalıştıramaması veya tek tek denemek istemeyenler için network analiz bölgesi mevcut. Bu network analiz bölgesinde tüm profilleri internetinizde belirli targetlarda test ederek en iyi profili sizin için bulur. Whitelist yöntemiyle çalıştığı için hiçbir şekilde başka uygulamalarınızı veya oyunlarınıza etki etmez. Yüksek ram veya cpu yemez.
+
+Herşey kontrol edilebilir ve gözlemlenebilir. Programı kullanıpta sorun yaşayan vb olursa bana bu konu altından bildirebilirler. Sorunları çözmeye ve geri bildirimlere göre güncelleme getirmeye özen göstereceğim.
+
+Programı ilk açışınızda İngilizce, Rusça ve Türkçe dil seçenekleri arasında seçim yapıyorsunuz ve otomatik güncellemeyi açıp açmamak istediğiniz hakkında soru soruluyor. Yani otomatik güncellemeyi istediğiniz gibi devredışı bırakıp açabiliyorsunuz.# 🐺 BurnedWolf
 
 > **Turkey-focused DPI bypass + Tor-routed Discord + system integrity checker for Windows.**
 > Built with Electron · MIT licensed · v1.5.0
@@ -43,7 +54,7 @@ BurnedWolf is a Windows desktop application that bundles three privacy/connectiv
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/iamnoobhasproject/burnedwolf.git
+git clone https://github.com/iamnoobhasproject/burnedwolf-sourcecode.git
 cd burnedwolf
 
 # 2. Install dependencies
@@ -147,7 +158,7 @@ BurnedWolf, üç gizlilik/bağlantı aracını tek bir temalı arayüzde birleş
 ### Kaynaktan derleme
 
 ```bash
-git clone https://github.com/iamnoobhasproject/burnedwolf.git
+git clone https://github.com/iamnoobhasproject/burnedwolf-sourcecode.git
 cd burnedwolf
 npm install
 # Üçüncü taraf binary'leri ekle (yukarıdaki English bölümünde linkler)
@@ -209,7 +220,7 @@ BurnedWolf — это десктопное приложение для Windows, 
 ### Сборка из исходников
 
 ```bash
-git clone https://github.com/iamnoobhasproject/burnedwolf.git
+git clone https://github.com/iamnoobhasproject/burnedwolf-sourcecode.git
 cd burnedwolf
 npm install
 # Добавьте сторонние бинарники (ссылки в английском разделе)
