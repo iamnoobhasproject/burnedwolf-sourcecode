@@ -234,4 +234,4 @@ MIT. См. [LICENSE](LICENSE).
 
 ---
 
-**v1.5.0** · Built with 🐺 in Türkiye
+**v1.6.0** · Built with 🐺 in Türkiye
