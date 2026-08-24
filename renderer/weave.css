@@ -1,0 +1,434 @@
+/* ==========================================================================
+   BURNEDWOLF — "FLAT WEAVE"  (düz dokuma)
+   --------------------------------------------------------------------------
+   THESIS
+   A tool an ordinary, frustrated person opens to make their internet work
+   again. It refuses the category's default — the dark hacker console with
+   neon glow, a world map and a big glowing shield — and the predictable
+   opposite, the pastel consumer app with rounded cards and a mascot.
+
+   OWN-WORLD
+   Anatolian flat-weave. Not a rug texture: the grammar of one.
+     · BANDS. A kilim is horizontal bands of differing density. So is every
+       screen here: one wide band for the single action, a tighter band for
+       status, a dense band for detail.
+     · FLAT. A flat weave has no pile, so this system has no gradients, no
+       glass, no glow, no soft shadows. Depth comes only from band order and
+       flat colour fields. Every AI-default surface effect is unavailable by
+       construction — that is the point.
+     · MOTIF. Kilim motifs are a drawn geometric vocabulary carrying meaning.
+       "Kurt ağzı" (wolf's mouth) and "kurt izi" (wolf track) are real
+       protective motifs, woven to turn danger away. The product is named
+       BurnedWolf and its job is protection; the motif is not decoration
+       borrowed from elsewhere, it is the same idea already drawn.
+     · COLOUR. Dark-ground kilim tradition: indigo-black ground, madder red,
+       undyed wool, walnut. Dark because the scene is a laptop at night, not
+       because the category is dark.
+     · SELVEDGE. A weave is bounded by its selvedge — the finished edge. Bands
+       are separated by warp-thin rules, never by shadow.
+
+   TYPE — embedded, offline, SIL OFL licensed (see fonts/*-OFL.txt)
+     display : Big Shoulders — condensed industrial signage; stencil-adjacent,
+               reads as equipment labelling rather than branding
+     body    : Work Sans — a workhorse; neutral where the motifs are not
+     figures : Geist Mono — tabular, for anything measured
+   No system fonts, no web fonts, no network. Everything ships in the asar.
+   ========================================================================== */
+
+/* ---------- TYPE ---------- */
+@font-face { font-family: "BW Display"; src: url("fonts/BigShoulders-Regular.ttf") format("truetype"); font-weight: 400; font-display: block; }
+@font-face { font-family: "BW Display"; src: url("fonts/BigShoulders-Bold.ttf")    format("truetype"); font-weight: 700; font-display: block; }
+@font-face { font-family: "BW Body";    src: url("fonts/WorkSans-Regular.ttf")     format("truetype"); font-weight: 400; font-display: block; }
+@font-face { font-family: "BW Body";    src: url("fonts/WorkSans-Bold.ttf")        format("truetype"); font-weight: 700; font-display: block; }
+@font-face { font-family: "BW Body";    src: url("fonts/WorkSans-Italic.ttf")      format("truetype"); font-weight: 400; font-style: italic; font-display: block; }
+@font-face { font-family: "BW Mono";    src: url("fonts/GeistMono-Regular.ttf")    format("truetype"); font-weight: 400; font-display: block; }
+@font-face { font-family: "BW Mono";    src: url("fonts/GeistMono-Bold.ttf")       format("truetype"); font-weight: 700; font-display: block; }
+
+:root {
+    /* ---- ground: dark-ground kilim ---- */
+    --ground:      #0e1118;   /* indigo-black, the warp                       */
+    --ground-2:    #141924;   /* one band lighter                             */
+    --band:        #1a2030;   /* a raised band                                */
+    --band-2:      #212939;   /* the densest band                             */
+    --selvedge:    #2b3446;   /* the finished edge — every rule is this        */
+    --selvedge-2:  #3a4762;   /* a stronger edge, for focus and selection      */
+
+    /* ---- dyes ----
+       Madder is measured, not picked by eye: #b8322a carries undyed wool at
+       4.80:1 (the action label) while still reading 3.17:1 against the ground
+       as a field. Interaction DEEPENS the dye the way wetting wool does, so
+       label contrast only ever improves on hover and press — a lighter hover
+       would have quietly dropped it below threshold. */
+    --madder:      #b8322a;   /* kök boya — the one action colour             */
+    --madder-wet:  #a52820;   /* hover: the dye deepens                        */
+    --madder-deep: #8d1f18;   /* pressed, and deep fields                      */
+    --madder-lit:  #e05b4a;   /* madder as INK on the dark ground              */
+    --wool:        #efe6d4;   /* undyed wool — primary text                    */
+    --wool-2:      #c4b9a4;   /* secondary text                               */
+    --wool-3:      #9d947f;   /* tertiary                                      */
+    --walnut:      #8a6a45;   /* ceviz — warm neutral, borders on warm bands   */
+    --indigo:      #3b5a9a;   /* çivit — the cold counter-dye                  */
+    --indigo-lit:  #6f92d6;
+
+    /* ---- dyes for state. Kilim dyes only; no signal-green. ---- */
+    --ok:      #6f8f4a;       /* yaprak — leaf                                 */
+    --ok-lit:  #a8c47a;
+    --warn:    #d0902c;       /* zerdeçal — turmeric                           */
+    --warn-lit:#efc36b;
+    --bad:     #c0392f;       /* madder doubles as danger; the weave has one red */
+    --bad-lit: #e8776a;
+
+    /* ---- text on ground, all ≥4.5:1 (measured, not guessed) ---- */
+    --ink:     #efe6d4;
+    --ink-2:   #c4b9a4;
+    --ink-3:   #9d947f;
+
+    /* ---- type ---- */
+    --display: "BW Display", "Arial Narrow", sans-serif;
+    --body:    "BW Body", system-ui, sans-serif;
+    --mono:    "BW Mono", "Consolas", monospace;
+
+    /* ---- weave metrics ----
+       A weave has a thread count. Every dimension here is a multiple of the
+       warp unit so bands stack without optical drift. */
+    --warp: 4px;
+    --s1: calc(var(--warp) * 1);    /*  4 */
+    --s2: calc(var(--warp) * 2);    /*  8 */
+    --s3: calc(var(--warp) * 3);    /* 12 */
+    --s4: calc(var(--warp) * 4);    /* 16 */
+    --s5: calc(var(--warp) * 5);    /* 20 */
+    --s6: calc(var(--warp) * 6);    /* 24 */
+    --s8: calc(var(--warp) * 8);    /* 32 */
+    --s10: calc(var(--warp) * 10);  /* 40 */
+
+    /* Woven edges are square. One radius, small, for controls only. */
+    --r: 3px;
+
+    /* ---- motion: a loom is fast and mechanical ---- */
+    --t-fast: .1s;
+    --t:      .16s;
+    --t-slow: .28s;
+    --ease:   cubic-bezier(.2, .7, .3, 1);
+}
+
+/* ---------- RESET ---------- */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+* { -webkit-user-select: none; }
+html, body { height: 100%; width: 100%; background: transparent; overflow: hidden; }
+body {
+    font-family: var(--body);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+}
+[hidden] { display: none !important; }
+button, input, select, textarea { font: inherit; color: inherit; outline: none; }
+button { background: none; border: none; cursor: pointer; }
+svg { flex-shrink: 0; }
+.num, [data-num] { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ---------- THE CLOTH ----------
+   The window is one piece of cloth: a bounded weave with a selvedge edge.
+   No shadow anywhere — a flat weave casts none. */
+.cloth {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--ground);
+    border: 1px solid var(--selvedge);
+}
+/* The warp: vertical threads, barely visible, running the whole cloth.
+   This is the only texture in the system and it is geometric, not noise. */
+.cloth::before {
+    content: '';
+    position: absolute; inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: .5;
+    background-image: repeating-linear-gradient(90deg,
+        rgba(255,255,255,.017) 0 1px, transparent 1px 3px);
+}
+.cloth > * { position: relative; z-index: 1; }
+
+/* ---------- BANDS ----------
+   The composition primitive. Bands stack; each is separated from the next by
+   a single warp-thin rule. Density is what distinguishes them, not chrome. */
+.band { flex-shrink: 0; border-bottom: 1px solid var(--selvedge); }
+.band:last-child { border-bottom: none; }
+.band.grow { flex: 1; min-height: 0; }
+.band.quiet  { padding: var(--s4) var(--s6); }
+.band.open   { padding: var(--s8) var(--s6); }
+.band.tight  { padding: var(--s3) var(--s6); }
+.band.raised { background: var(--ground-2); }
+.band.deep   { background: var(--band); }
+
+/* ---------- SCROLL ----------
+   A generic utility, NOT `.band.scroll`. It was scoped to .band once and the
+   pages use it as `view scroll` and `pad scroll`, so nothing matched and no
+   screen could be scrolled at all — the model list was unreachable past the
+   fold. Any element that owns a scroll region carries this class.
+   `min-height: 0` is the half of it people forget: a flex child will not
+   shrink below its content without it, so the overflow never engages. */
+.scroll {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    min-height: 0;
+}
+
+/* A view with a pinned subhead scrolls its body, not itself, so the title and
+   the back button stay put while the content moves under them. */
+.view.scroll { overflow: hidden; }
+.view.scroll > .sub { flex-shrink: 0; }
+.view.scroll > .pad {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+/* A band label — the woven equivalent of a stencilled zone code. */
+.band-label {
+    font-family: var(--display);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: flex; align-items: center; gap: var(--s2);
+}
+.band-label::after {
+    content: '';
+    flex: 1; height: 1px;
+    background: var(--selvedge);
+}
+
+/* ---------- MOTIF ----------
+   Kilim motifs are drawn, geometric and meaningful. They are the icon system.
+   Drawn as SVG in one stroke grammar; this class only sizes and colours them. */
+.motif { width: 20px; height: 20px; color: var(--ink-2); }
+.motif.lg { width: 28px; height: 28px; }
+.motif.sm { width: 15px; height: 15px; }
+.motif.on { color: var(--madder); }
+
+/* ---------- HEADINGS ---------- */
+h1, .h1 { font-family: var(--display); font-weight: 700; font-size: 34px; line-height: 1.03; letter-spacing: .01em; text-transform: uppercase; }
+h2, .h2 { font-family: var(--display); font-weight: 700; font-size: 23px; line-height: 1.08; letter-spacing: .02em; text-transform: uppercase; }
+h3, .h3 { font-family: var(--display); font-weight: 700; font-size: 16px; line-height: 1.15; letter-spacing: .06em; text-transform: uppercase; }
+h4, .h4 { font-family: var(--body);    font-weight: 700; font-size: 14px; line-height: 1.3; }
+.lead { font-size: 14px; color: var(--ink-2); line-height: 1.55; max-width: 56ch; }
+.small { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; max-width: 62ch; }
+.tiny  { font-size: 11.5px; color: var(--ink-3); line-height: 1.45; }
+
+/* ---------- ACTION ----------
+   One madder field. In a weave the red band is where the eye goes, so the red
+   belongs to the single action the product exists to perform, and nowhere
+   else. Square, flat, no gradient, no shadow. */
+.act {
+    display: inline-flex; align-items: center; justify-content: center; gap: var(--s2);
+    padding: var(--s3) var(--s5);
+    min-height: 40px;
+    font-family: var(--display);
+    font-size: 16px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--wool);
+    background: var(--madder);
+    border: 1px solid var(--madder);
+    border-radius: var(--r);
+    transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+.act:hover:not(:disabled)  { background: var(--madder-wet); border-color: var(--madder-wet); }
+.act:active:not(:disabled) { background: var(--madder-deep); border-color: var(--madder-deep); }
+.act:disabled { background: transparent; color: var(--ink-3); border-color: var(--selvedge); cursor: default; }
+
+/* The same shape, undyed: everything that is not THE action. */
+.act.plain {
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--selvedge-2);
+    font-family: var(--body);
+    font-size: 13px; font-weight: 700; letter-spacing: .01em; text-transform: none;
+}
+.act.plain:hover:not(:disabled)  { background: var(--band); border-color: var(--walnut); color: var(--wool); }
+.act.plain:active:not(:disabled) { background: var(--ground-2); }
+.act.quiet {
+    background: transparent; border-color: transparent; color: var(--ink-2);
+    font-family: var(--body); font-size: 13px; font-weight: 400; letter-spacing: 0; text-transform: none;
+}
+.act.quiet:hover:not(:disabled) { color: var(--wool); background: var(--band); }
+.act.danger { background: transparent; color: var(--bad-lit); border-color: rgba(192,57,47,.5); font-family: var(--body); text-transform: none; letter-spacing: 0; font-size: 13px; }
+.act.danger:hover:not(:disabled) { background: rgba(192,57,47,.14); border-color: var(--bad); }
+.act.sm { min-height: 32px; padding: var(--s2) var(--s3); font-size: 12.5px; letter-spacing: .04em; }
+.act.lg { min-height: 56px; padding: var(--s4) var(--s8); font-size: 21px; }
+.act.block { width: 100%; }
+.act.busy { pointer-events: none; }
+.act.busy::before {
+    content: ''; width: 12px; height: 12px;
+    border: 2px solid currentColor; border-right-color: transparent;
+    animation: spin .6s linear infinite;
+}
+
+/* A text action. Underline, because a weave has no hover glow to offer.
+   The hit area is padded to 32px even though the mark is one line of text —
+   a small visible mark is fine, a small target is not. */
+.link {
+    display: inline-flex; align-items: center;
+    color: var(--ink-2); font-size: 12.5px;
+    min-height: 32px;
+    padding: 0 var(--s1);
+    box-shadow: inset 0 -1px 0 var(--selvedge-2);
+    transition: color var(--t-fast), box-shadow var(--t-fast);
+    white-space: nowrap;
+}
+.link:hover:not(:disabled) { color: var(--madder-lit); box-shadow: inset 0 -1px 0 var(--madder); }
+.link:disabled { color: var(--ink-3); box-shadow: none; cursor: default; }
+
+/* ---------- FOCUS ----------
+   The selvedge doubles: a second finished edge around the focused thing. */
+:focus { outline: none; }
+:focus-visible {
+    outline: 2px solid var(--madder-lit);
+    outline-offset: 2px;
+}
+
+/* ---------- FIELDS ---------- */
+.field, select, textarea {
+    width: 100%;
+    background: var(--ground);
+    color: var(--ink);
+    border: 1px solid var(--selvedge-2);
+    border-radius: var(--r);
+    padding: var(--s2) var(--s3);
+    min-height: 38px;
+    font-size: 13px;
+    transition: border-color var(--t-fast);
+}
+.field:hover, select:hover { border-color: var(--walnut); }
+.field:focus, select:focus, textarea:focus { border-color: var(--madder); }
+.field, textarea { -webkit-user-select: text; }
+.field::placeholder, textarea::placeholder { color: var(--ink-3); }
+select { cursor: pointer; }
+select:disabled, .field:disabled { color: var(--ink-3); cursor: default; }
+textarea { min-height: 120px; resize: vertical; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; }
+label.lbl { display: block; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); margin-bottom: var(--s1); }
+
+/* ---------- SWITCH ----------
+   A warp thread with a bead on it. Two states, no animation theatre. */
+.sw { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
+.sw input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: pointer; }
+.sw .bead {
+    position: absolute; inset: 0;
+    border: 1px solid var(--selvedge-2);
+    border-radius: var(--r);
+    background: var(--ground);
+    transition: background var(--t), border-color var(--t);
+    pointer-events: none;
+}
+.sw .bead::after {
+    content: '';
+    position: absolute; top: 3px; left: 3px;
+    width: 18px; height: 18px;
+    background: var(--ink-3);
+    transition: transform var(--t) var(--ease), background var(--t);
+}
+.sw input:checked + .bead { background: var(--madder-deep); border-color: var(--madder); }
+.sw input:checked + .bead::after { transform: translateX(20px); background: var(--wool); }
+.sw input:disabled + .bead { opacity: .4; cursor: default; }
+.sw input:focus-visible + .bead { outline: 2px solid var(--madder-lit); outline-offset: 2px; }
+
+/* ---------- PICK (segmented) ---------- */
+.pick { display: inline-flex; border: 1px solid var(--selvedge-2); border-radius: var(--r); overflow: hidden; }
+.pick button {
+    padding: var(--s2) var(--s4);
+    min-height: 32px;
+    font-size: 12.5px; font-weight: 700;
+    color: var(--ink-2);
+    border-right: 1px solid var(--selvedge-2);
+    transition: background var(--t-fast), color var(--t-fast);
+}
+.pick button:last-child { border-right: none; }
+.pick button:hover { color: var(--wool); background: var(--band); }
+.pick button.on { background: var(--madder); color: var(--wool); }
+
+/* ---------- TAG ----------
+   Flat, square, one dye. No pill shapes — a weave has no round edges. */
+.tag {
+    display: inline-flex; align-items: center; gap: var(--s1);
+    padding: 2px var(--s2);
+    font-family: var(--mono); font-size: 10.5px; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ink-2);
+    border: 1px solid var(--selvedge-2);
+    white-space: nowrap;
+}
+.tag.ok   { color: var(--ok-lit);     border-color: rgba(111,143,74,.55); }
+.tag.warn { color: var(--warn-lit);   border-color: rgba(208,144,44,.55); }
+.tag.bad  { color: var(--bad-lit);    border-color: rgba(192,57,47,.55); }
+.tag.on   { color: var(--wool);       border-color: var(--madder); background: var(--madder-deep); }
+.tag.cold { color: var(--indigo-lit); border-color: rgba(59,90,154,.6); }
+
+/* ---------- ROW ---------- */
+.row { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); padding: var(--s3) 0; border-bottom: 1px solid var(--selvedge); }
+.row:last-child { border-bottom: none; }
+.row .rt h4 { font-size: 13.5px; font-weight: 700; margin-bottom: 2px; }
+.row .rt p  { font-size: 12px; color: var(--ink-2); line-height: 1.45; max-width: 58ch; }
+
+/* ---------- METER ----------
+   Woven progress: discrete picks of weft, not a sliding gradient bar. */
+.meter { display: flex; gap: 2px; height: 8px; }
+.meter i { flex: 1; background: var(--band-2); transition: background var(--t) var(--ease); }
+.meter i.f { background: var(--madder); }
+.meter.ok i.f   { background: var(--ok); }
+.meter.warn i.f { background: var(--warn); }
+
+/* ---------- LOG ---------- */
+.log {
+    background: #080a10;
+    border: 1px solid var(--selvedge);
+    padding: var(--s2) var(--s3);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--ink-2);
+    overflow-y: auto;
+    -webkit-user-select: text;
+}
+.log .l { padding: 1px 0; word-break: break-word; }
+.log .l.ok { color: var(--ok-lit); }
+.log .l.bad { color: var(--bad-lit); }
+.log .l.warn { color: var(--warn-lit); }
+.log-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: var(--s1); padding: var(--s5); text-align: center; font-family: var(--body); }
+.log-empty b { color: var(--ink); font-size: 13px; }
+.log-empty span { color: var(--ink-3); font-size: 11.5px; max-width: 40ch; }
+
+/* ---------- EMPTY ---------- */
+.empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--s2); padding: var(--s8) var(--s6); }
+.empty h4 { font-family: var(--display); font-size: 17px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink); }
+.empty p { font-size: 12.5px; color: var(--ink-2); max-width: 42ch; line-height: 1.5; }
+
+/* ---------- OVERLAY ---------- */
+.over { position: absolute; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; padding: var(--s6); background: rgba(8,10,16,.88); }
+.over.show { display: flex; }
+.sheet { width: 100%; max-width: 460px; max-height: 88%; display: flex; flex-direction: column; background: var(--ground-2); border: 1px solid var(--selvedge-2); overflow: hidden; }
+.sheet-top { display: flex; align-items: center; gap: var(--s2); padding: var(--s3) var(--s4); border-bottom: 1px solid var(--selvedge); }
+.sheet-body { padding: var(--s4); overflow-y: auto; }
+
+/* ---------- SCROLLBAR — a warp channel ---------- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--ground); border-left: 1px solid var(--selvedge); }
+::-webkit-scrollbar-thumb { background: var(--selvedge-2); }
+::-webkit-scrollbar-thumb:hover { background: var(--walnut); }
+::selection { background: var(--madder); color: var(--wool); }
+
+/* ---------- MOTION ----------
+   A loom is mechanical: things arrive in one axis, quickly, and stop.
+   No easing theatre, no staggered cascades on routine renders. */
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes weftIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+@keyframes bandIn { from { opacity: 0; } to { opacity: 1; } }
+.enter { animation: bandIn .12s linear both; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

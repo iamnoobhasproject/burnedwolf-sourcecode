@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Shutting Down</title>
+<link rel="stylesheet" href="renderer/weave.css">
+<style>
+body { display: flex; -webkit-app-region: drag; }
+.top { display: flex; align-items: center; justify-content: space-between; padding: var(--s2) var(--s4); border-bottom: 1px solid var(--selvedge); flex-shrink: 0; }
+.mk { display: flex; align-items: center; gap: var(--s2); }
+.mk .g { width: 18px; height: 18px; color: var(--madder-lit); }
+.mk .n { font-family: var(--display); font-size: 14px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.zone { font-family: var(--display); font-size: 10px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3); }
+
+/* This window is a list of three facts. It is sized to exactly that — the
+   previous build stacked 447px of content into a 340px window and cut the
+   footer off entirely. */
+.stage { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: var(--s4); padding: var(--s5); min-height: 0; }
+.head { display: flex; align-items: center; gap: var(--s3); }
+.head canvas { width: 46px; height: 46px; flex-shrink: 0; }
+.head h2 { font-size: 19px; }
+.head p { font-size: 12px; color: var(--ink-2); line-height: 1.4; margin-top: 2px; }
+
+.steps { display: flex; flex-direction: column; }
+.kill { display: flex; align-items: center; gap: var(--s2); padding: var(--s2) 0; border-bottom: 1px solid var(--selvedge); font-size: 12.5px; color: var(--ink-3); }
+.kill:last-child { border-bottom: none; }
+.kill .box { width: 13px; height: 13px; flex-shrink: 0; border: 1px solid var(--selvedge-2); }
+.kill.done { color: var(--ink); }
+.kill.done .box { background: var(--madder); border-color: var(--madder); }
+</style>
+</head>
+<body>
+<div class="cloth">
+    <div class="top">
+        <span class="mk">
+            <svg class="g" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="miter"><path d="M12 2 L20 7 L20 17 L12 22 L4 17 L4 7 Z"></path></svg>
+            <span class="n">BurnedWolf</span>
+        </span>
+        <span class="zone" data-i18n="exit.brand_sub">Shutting down</span>
+    </div>
+
+    <div class="stage">
+        <div class="head">
+            <canvas id="exitLoom"></canvas>
+            <span>
+                <h2 class="h2" data-i18n="exit.title">Terminating session</h2>
+                <p data-i18n="exit.sub">Closing tunnels and restoring your network.</p>
+            </span>
+        </div>
+        <div class="steps">
+            <div class="kill" data-step="0"><span class="box"></span><span data-i18n="exit.step_tor">Closing the Tor circuit</span></div>
+            <div class="kill" data-step="1"><span class="box"></span><span data-i18n="exit.step_engine">Stopping the DPI engine</span></div>
+            <div class="kill" data-step="2"><span class="box"></span><span data-i18n="exit.step_dns">Restoring your DNS settings</span></div>
+        </div>
+    </div>
+</div>
+<script src="renderer/loom.js"></script>
+<script src="./exit-dialog.js"></script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BurnedWolf — Welcome</title>
+<link rel="stylesheet" href="renderer/weave.css">
+<style>
+body { display: flex; -webkit-app-region: drag; }
+.top { display: flex; align-items: center; justify-content: space-between; padding: var(--s3) var(--s5); border-bottom: 1px solid var(--selvedge); flex-shrink: 0; }
+.mk { display: flex; align-items: center; gap: var(--s2); }
+.mk .g { width: 20px; height: 20px; color: var(--madder-lit); }
+.mk .n { font-family: var(--display); font-size: 16px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.zone { font-family: var(--display); font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--madder-lit); border: 1px solid var(--selvedge-2); padding: 2px var(--s2); }
+
+.stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: var(--s6); min-height: 0; overflow-y: auto; -webkit-app-region: no-drag; }
+.step { display: none; flex-direction: column; align-items: center; text-align: center; width: 100%; max-width: 430px; }
+.step.on { display: flex; }
+.step h2 { margin-bottom: var(--s2); }
+.step .why { font-size: 13px; color: var(--ink-2); line-height: 1.55; margin-bottom: var(--s6); max-width: 46ch; }
+
+.langs { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s2); width: 100%; margin-bottom: var(--s6); }
+.lang { display: flex; flex-direction: column; align-items: center; gap: var(--s2); padding: var(--s4) var(--s2); border: 1px solid var(--selvedge-2); transition: border-color var(--t-fast), background var(--t-fast); }
+.lang:hover { border-color: var(--walnut); background: var(--band); }
+.lang.sel { border-color: var(--madder); background: var(--band); }
+.lang .nat { font-size: 17px; font-weight: 700; }
+.lang .code { font-family: var(--mono); font-size: 10.5px; font-weight: 700; letter-spacing: .1em; color: var(--ink-3); }
+.lang.sel .code { color: var(--madder-lit); }
+
+.picks { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); width: 100%; margin-bottom: var(--s6); }
+.choice { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s4); text-align: left; border: 1px solid var(--selvedge-2); transition: border-color var(--t-fast), background var(--t-fast); }
+.choice:hover { border-color: var(--walnut); background: var(--band); }
+.choice.sel { border-color: var(--madder); background: var(--band); }
+.choice b { font-size: 14px; font-weight: 700; }
+.choice span { font-size: 12px; color: var(--ink-2); line-height: 1.45; }
+
+.go { width: 100%; max-width: 280px; }
+.foot { padding: var(--s2) var(--s5); border-top: 1px solid var(--selvedge); font-size: 10.5px; color: var(--ink-3); text-align: center; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="cloth">
+    <div class="top">
+        <span class="mk">
+            <svg class="g" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="miter"><path d="M12 2 L20 7 L20 17 L12 22 L4 17 L4 7 Z"></path><path d="M12 6.5 L16.5 9.2 L16.5 14.8 L12 17.5 L7.5 14.8 L7.5 9.2 Z"></path></svg>
+            <span class="n">BurnedWolf</span>
+        </span>
+        <span class="zone" id="stepIndicator">Step 1 of 3</span>
+    </div>
+
+    <div class="stage">
+        <!-- 1 · language -->
+        <div class="step on" id="step-language">
+            <h2 class="h2" id="langTitle">Choose your language</h2>
+            <p class="why" id="langWhy">Pick the language you want BurnedWolf to use. You can change it later in settings.</p>
+            <!-- Each language names itself in its own script. Flag emoji were doing
+                 this job before: they render differently on every machine, and a
+                 flag is a country, not a language. -->
+            <div class="langs">
+                <button class="lang" data-lang="en"><span class="nat">English</span><span class="code">EN</span></button>
+                <button class="lang" data-lang="tr"><span class="nat">Türkçe</span><span class="code">TR</span></button>
+                <button class="lang" data-lang="ru"><span class="nat">Русский</span><span class="code">RU</span></button>
+            </div>
+            <button class="act go" id="btnLangNext" disabled>Continue</button>
+        </div>
+
+        <!-- 2 · updates -->
+        <div class="step" id="step-update">
+            <h2 class="h2" id="updateTitle">Automatic updates</h2>
+            <p class="why" id="updateSubtitle">Should BurnedWolf check for updates on every launch?</p>
+            <div class="picks">
+                <button class="choice" data-update="yes"><b id="updateYesName">Yes, enable</b><span id="updateYesDesc">Recommended. Always run the latest fixes.</span></button>
+                <button class="choice" data-update="no"><b id="updateNoName">No, skip</b><span id="updateNoDesc">Skip the check at startup. You can still update manually.</span></button>
+            </div>
+            <button class="act go" id="btnUpdateNext" disabled>Continue</button>
+        </div>
+
+        <!-- 3 · AI -->
+        <div class="step" id="step-ai">
+            <h2 class="h2" id="aiTitle">Meet BurnedWolf AI</h2>
+            <p class="why" id="aiSubtitle">Connect any AI provider — several are free — and it will read your connection, pick the right bypass profile and configure the app for you.</p>
+            <div class="picks">
+                <button class="choice" data-ai="yes"><b id="aiYesName">Set it up now</b><span id="aiYesDesc">Opens the provider list once setup finishes.</span></button>
+                <button class="choice" data-ai="no"><b id="aiNoName">Maybe later</b><span id="aiNoDesc">Go straight to the app. The AI tab is always there.</span></button>
+            </div>
+            <button class="act go" id="btnUpdateFinish" disabled>Get started</button>
+        </div>
+    </div>
+
+    <div class="foot" id="footerHint">Welcome to BurnedWolf</div>
+</div>
+<script src="./onboarding.js"></script>
+</body>
+</html>

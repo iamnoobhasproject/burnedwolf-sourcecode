@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BurnedWolf Updater</title>
+<link rel="stylesheet" href="renderer/weave.css">
+<style>
+body { display: flex; -webkit-app-region: drag; }
+.top { display: flex; align-items: center; justify-content: space-between; padding: var(--s3) var(--s5); border-bottom: 1px solid var(--selvedge); flex-shrink: 0; }
+.mk { display: flex; align-items: center; gap: var(--s2); }
+.mk .g { width: 20px; height: 20px; color: var(--madder-lit); }
+.mk .n { font-family: var(--display); font-size: 16px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.zone { font-family: var(--display); font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); border: 1px solid var(--selvedge); padding: 2px var(--s2); }
+
+.stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: var(--s5) var(--s6); min-height: 0; }
+.state { display: none; flex-direction: column; align-items: center; text-align: center; width: 100%; max-width: 400px; }
+.state.on { display: flex; }
+
+.vis { width: 108px; height: 108px; margin-bottom: var(--s4); }
+/* A woven mark, not a spinner: filled = done, outline = pending. */
+.sign { width: 60px; height: 60px; margin-bottom: var(--s4); }
+.sign.ok { color: var(--ok-lit); }
+.sign.warn { color: var(--warn-lit); }
+.sign.bad { color: var(--bad-lit); }
+.sign.act { color: var(--madder-lit); }
+
+h2 { margin-bottom: var(--s2); }
+.state p { font-size: 13px; color: var(--ink-2); line-height: 1.55; max-width: 44ch; }
+.vers { margin-top: var(--s4); font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--madder-lit); border: 1px solid var(--selvedge-2); padding: var(--s2) var(--s3); }
+.prog { width: 100%; margin-top: var(--s5); }
+.prog .lbl { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-2); margin-bottom: var(--s2); }
+.btns { display: flex; gap: var(--s2); width: 100%; margin-top: var(--s5); -webkit-app-region: no-drag; }
+.btns .act { flex: 1; }
+.foot { padding: var(--s2) var(--s5); border-top: 1px solid var(--selvedge); font-size: 10.5px; color: var(--ink-3); text-align: center; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="cloth">
+    <div class="top">
+        <span class="mk">
+            <svg class="g" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="miter"><path d="M12 2 L20 7 L20 17 L12 22 L4 17 L4 7 Z"></path><path d="M12 6.5 L16.5 9.2 L16.5 14.8 L12 17.5 L7.5 14.8 L7.5 9.2 Z"></path></svg>
+            <span class="n">BurnedWolf</span>
+        </span>
+        <span class="zone" id="zone">Updater</span>
+    </div>
+
+    <div class="stage">
+        <!-- 0 · DNS self-check, before anything touches the network -->
+        <div class="state on" id="dnsCheckState">
+            <canvas class="vis" id="checkLoom"></canvas>
+            <h2 data-i18n="dnsfix.check_title">Checking your DNS</h2>
+            <p data-i18n="dnsfix.check_sub">Making sure an interrupted encrypted-DNS session didn't leave your resolver stranded on 127.0.0.1.</p>
+        </div>
+
+        <div class="state" id="dnsFixedState">
+            <svg class="sign ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="miter"><path d="M12 2 L21 7 L21 17 L12 22 L3 17 L3 7 Z"></path><path d="M8 12 L11 15 L16.5 9.5"></path></svg>
+            <h2 data-i18n="dnsfix.fixed_title">DNS repaired</h2>
+            <p id="dnsFixedSub" data-i18n="dnsfix.fixed_text">Your adapter was pointing at a dead local resolver. It's back to normal.</p>
+        </div>
+
+        <div class="state" id="dnsBrokenState">
+            <svg class="sign warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="miter"><path d="M12 2 L22 20 H2 Z"></path><path d="M12 9 v5"></path><path d="M12 17 v.01"></path></svg>
+            <h2 data-i18n="dnsfix.broken_title">DNS needs repairing</h2>
+            <p data-i18n="dnsfix.broken_sub">Your adapter still resolves through 127.0.0.1 but nothing is listening there.</p>
+            <div class="btns">
+                <button class="act plain" id="btnDnsSkip" data-i18n="dnsfix.skip">Skip</button>
+                <button class="act" id="btnDnsRepair" data-i18n="dnsfix.btn">Repair DNS</button>
+            </div>
+        </div>
+
+        <!-- 1 · update check -->
+        <div class="state" id="checkState">
+            <canvas class="vis" id="updLoom"></canvas>
+            <h2 data-i18n="updater.checking_title">Checking for updates</h2>
+            <p data-i18n="updater.checking_sub">Establishing a secure connection to the BurnedWolf network…</p>
+        </div>
+
+        <div class="state" id="updateAvailableState">
+            <svg class="sign act" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="miter"><path d="M12 3 v12"></path><path d="M7 10 L12 15 L17 10"></path><path d="M4 19 h16"></path></svg>
+            <h2 data-i18n="updater.available_title">A new version is available</h2>
+            <p data-i18n="updater.available_sub">Installing takes a few seconds and your settings are preserved.</p>
+            <div class="vers"><span id="versionText">— → —</span></div>
+            <div class="btns">
+                <button class="act plain" id="btnUpdateClose" data-i18n="updater.btn_not_now">Not now</button>
+                <button class="act" id="btnUpdate" data-i18n="updater.btn_update_now">Update now</button>
+            </div>
+        </div>
+
+        <div class="state" id="progressState">
+            <canvas class="vis" id="dlLoom"></canvas>
+            <h2 data-i18n="updater.installing_title">Updating BurnedWolf</h2>
+            <p data-i18n="updater.installing_sub">Please don't close the window.</p>
+            <div class="prog">
+                <div class="lbl"><span id="statusText">0%</span></div>
+                <div class="meter" id="dlMeter"></div>
+            </div>
+        </div>
+
+        <div class="state" id="upToDateState">
+            <svg class="sign ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="miter"><path d="M12 2 L21 7 L21 17 L12 22 L3 17 L3 7 Z"></path><path d="M8 12 L11 15 L16.5 9.5"></path></svg>
+            <h2 data-i18n="updater.uptodate_title">You're all set</h2>
+            <p data-i18n="updater.uptodate_sub">BurnedWolf is up to date.</p>
+        </div>
+
+        <div class="state" id="errorState">
+            <svg class="sign bad" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="miter"><path d="M12 2 L21 7 L21 17 L12 22 L3 17 L3 7 Z"></path><path d="M9 9 L15 15 M15 9 L9 15"></path></svg>
+            <h2 data-i18n="updater.error_title">Couldn't reach the server</h2>
+            <p data-i18n="updater.error_sub">Check your connection. If a crash broke your DNS, the repair below usually fixes it.</p>
+            <div class="btns">
+                <button class="act plain" id="btnErrorClose" data-i18n="updater.btn_continue_anyway">Continue anyway</button>
+                <button class="act" id="btnErrorRepair" data-i18n="dnsfix.btn_retry">Repair DNS &amp; retry</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="foot" data-i18n="updater.footer">BurnedWolf</div>
+</div>
+<script src="renderer/loom.js"></script>
+<script src="./updater.js"></script>
+</body>
+</html>
