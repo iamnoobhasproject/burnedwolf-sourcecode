@@ -20,6 +20,7 @@
 //   autostart.js        logon scheduled task
 //   updater.js          check/download/apply update pipeline
 //   verify.js           file-integrity download/compare/repair
+//   donate.js           the donation address + its clipboard/wallet handoff
 //   zapret/             DPI engine: paths, profiles, payloads, hostlists,
 //                       engine (start/stop/failover/health), blockcheck
 //   ai/                 BurnedWolf AI: provider catalog, wire protocols,
@@ -47,8 +48,11 @@ require('./discord');
 require('./credentials');
 require('./isp');
 require('./autostart');
-require('./updater');
+const updater = require('./updater');
 require('./verify');
+require('./backup');
+require('./donate');
+const proxy = require('./proxy');
 const hostlists = require('./zapret/hostlists');
 const payloads = require('./zapret/payloads');
 require('./zapret/profiles');
@@ -66,6 +70,7 @@ powerSaveBlocker.start('prevent-app-suspension');
 quit.registerQuitTask(tor.killSync);
 quit.registerQuitTask(engine.killSync);
 quit.registerQuitTask(dns.cleanupSync);
+quit.registerQuitTask(proxy.stopHttp);
 
 // Onboarding finished → proceed with the regular boot sequence based on the
 // auto-update preference the user just saved.
@@ -131,6 +136,12 @@ app.whenReady().then(() => {
     // Rewritten every launch so list updates ship with the app, not with the
     // user's local file edits.
     hostlists.ensureTrMasterList();
+
+    // BurnedWolf lives in the tray for days at a time, so the launch-time update
+    // check isn't enough. Start a quiet periodic checker that toasts + lights up
+    // the tray when a newer build appears. Honours the auto_update preference and
+    // never downloads on its own — kicked off here (non-blocking).
+    updater.startBackgroundUpdateChecks();
 });
 
 app.on('will-quit', () => {

@@ -510,4 +510,10 @@ ipcMain.handle('get-dpi-profiles', () => {
     });
 });
 
+// Raw argv of a built-in profile — used by the profile builder's "clone" so the
+// user can start from a proven ruleset and tweak it. Returns a copy (or null).
+ipcMain.handle('get-profile-args', (event, id) => {
+    return Array.isArray(ZAPRET_PROFILES[id]) ? ZAPRET_PROFILES[id].slice() : null;
+});
+
 module.exports = { ZAPRET_PROFILES, PROFILE_META, applyGlobalProfileFlags, inferProfileMeta };

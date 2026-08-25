@@ -21,6 +21,7 @@ const { ZAPRET_PROFILES, applyGlobalProfileFlags } = require('./profiles');
 const hostlists = require('./hostlists');
 const isp = require('../isp');
 const tor = require('../tor');
+const stats = require('./stats');
 
 // --- CORE STATE ---
 let zapretProcess = null;
@@ -47,6 +48,8 @@ function recordHealthProbe(ok) {
     // Drop samples older than the window
     const cutoff = now - HEALTH_WINDOW_MS;
     while (healthHistory.length && healthHistory[0].ts < cutoff) healthHistory.shift();
+    // Persist to the cross-session stats store (per-profile success + sparkline).
+    try { stats.onProbe(!!ok); } catch (e) { /* stats are best-effort */ }
 }
 
 function computeHealthStats() {
@@ -192,6 +195,8 @@ async function rotateToNextProfile() {
     }
 
     const nextProfile = failoverChain[nextIndex];
+    // Record the rotation before we mutate the index (from = the profile we're leaving).
+    try { stats.onFailover(failoverChain[failoverCurrentIndex] || currentZapretMode, nextProfile); } catch (e) { /* best-effort */ }
     failoverCurrentIndex = nextIndex;
 
     broadcastZapretLog(`[FAILOVER] Rotating to next profile → ${nextProfile.toUpperCase()}`);
@@ -274,7 +279,13 @@ function startZapret(config) {
         return;
     }
 
-    let baseArgs = mode === 'custom' ? customArgs : (ZAPRET_PROFILES[mode] || ZAPRET_PROFILES['bw_standard']);
+    // Any caller that supplies an explicit argv uses it verbatim — the legacy
+    // 'custom' slot AND user-built / imported profiles that carry their own args.
+    // `mode` is then kept only as the display/stats label. Built-in profiles
+    // pass customArgs:null and resolve from the catalog as before.
+    let baseArgs = (Array.isArray(customArgs) && customArgs.length > 0)
+        ? customArgs
+        : (ZAPRET_PROFILES[mode] || ZAPRET_PROFILES['bw_standard']);
     // Apply global flags (IPv6 dual-stack) to every profile automatically so new
     // profiles inherit the setting without manual edits.
     let args = [
@@ -313,6 +324,9 @@ function startZapret(config) {
         zapretProcess = spawn(WINWS_EXE, args, { windowsHide: true });
         isZapretRunning = true;
         currentZapretMode = mode;
+
+        // Open a stats session for this profile run (runtime + success tracking).
+        try { stats.onSessionStart(mode); } catch (e) { /* stats are best-effort */ }
 
         broadcastToAll('zapret-status', 'running');
         notify('DPI Shield Active', `Profile: ${mode.toUpperCase()}`);
@@ -378,6 +392,8 @@ function startZapret(config) {
             isZapretRunning = false;
             zapretProcess = null;
             currentZapretMode = null;
+            // Close the stats session (finalises runtime for this profile run).
+            try { stats.onSessionEnd(); } catch (e) { /* stats are best-effort */ }
             broadcastToAll('zapret-status', 'stopped');
             broadcastZapretLog(`[INFO] Shield deactivated. (Code: ${code})`);
             if (wasRunning) notify('DPI Shield Stopped', 'Network filtering hooks have been released.');
@@ -425,6 +441,9 @@ function getState() {
 // Synchronous quit-time cleanup (registered with quit.js).
 function killSync() {
     try { if (zapretProcess) zapretProcess.kill('SIGKILL'); } catch (e) {}
+    // Finalise + persist stats on the way out (idempotent if a session already ended).
+    try { stats.onSessionEnd(); } catch (e) {}
+    try { stats.flush(); } catch (e) {}
 }
 
 module.exports = { startZapret, stopZapret, getState, getHealth, killSync };

@@ -80,12 +80,19 @@ function toggleWindowMaximize(w) {
 // --- 1. PHASE: UPDATER WINDOW ---
 // ==========================================
 function createUpdaterWindow() {
+    // Guard: never stack two updater windows. If one is already open (e.g. the
+    // tray "install update" item clicked twice), just surface the existing one.
+    if (updaterWindow && !updaterWindow.isDestroyed()) {
+        try { updaterWindow.show(); updaterWindow.focus(); } catch (e) {}
+        return;
+    }
     updaterWindow = new BrowserWindow({
         width: 620, height: 470, frame: false, transparent: false, backgroundColor: '#0e1118', alwaysOnTop: true, skipTaskbar: true,
         resizable: false,
         webPreferences: { nodeIntegration: true, contextIsolation: false }
     });
     updaterWindow.loadFile('updater.html');
+    updaterWindow.on('closed', () => { updaterWindow = null; });
 }
 
 // ==========================================
@@ -102,9 +109,66 @@ function createOnboardingWindow() {
 }
 
 // ==========================================
+// --- TRAY MENU (rebuildable) ---
+// ==========================================
+// The tray menu gains an "Install update" item only while a check (background or
+// manual) has found a newer build. Kept behind a builder so refreshUpdateTray()
+// can rebuild it when that state changes, without disturbing the rest of the app.
+let pendingUpdateInfo = null;
+
+function showMainFromTray() {
+    if (win && !win.isDestroyed()) {
+        win.show();
+        win.focus();
+        if (!hiddenWindowsTracker.includes(win.id)) return;
+        // also restore any other windows the user had hidden into tray
+        BrowserWindow.getAllWindows().forEach(w => {
+            if (!w.isDestroyed() && hiddenWindowsTracker.includes(w.id)) {
+                w.show();
+            }
+        });
+        hiddenWindowsTracker = [];
+    }
+}
+
+function buildTrayMenu() {
+    const items = [
+        { label: 'Show BurnedWolf', click: showMainFromTray }
+    ];
+    if (pendingUpdateInfo && pendingUpdateInfo.new) {
+        items.push({ type: 'separator' });
+        items.push({ label: `Install update (v${pendingUpdateInfo.new})`, click: () => createUpdaterWindow() });
+    }
+    items.push({ type: 'separator' });
+    items.push({ label: 'Quit BurnedWolf', click: () => attemptExit() });
+    return Menu.buildFromTemplate(items);
+}
+
+// Called by the updater module whenever a check changes the pending-update state.
+// No-op safe before the tray exists (early boot).
+function refreshUpdateTray(info) {
+    pendingUpdateInfo = (info && info.new) ? info : null;
+    if (tray && !tray.isDestroyed()) {
+        try { tray.setContextMenu(buildTrayMenu()); } catch (e) {}
+        try {
+            tray.setToolTip(pendingUpdateInfo
+                ? `BurnedWolf · Update v${pendingUpdateInfo.new} available`
+                : 'BurnedWolf System Gateway');
+        } catch (e) {}
+    }
+}
+
+// ==========================================
 // --- 2. PHASE: MAIN SCREEN ---
 // ==========================================
 function createMainWindow() {
+    // Guard: the app has exactly one main window. Opening the updater window
+    // mid-session ends in 'proceed-to-splash' → createMainWindow(); without this
+    // guard that path would spawn a SECOND main window over the running app.
+    if (win && !win.isDestroyed()) {
+        try { win.show(); win.focus(); } catch (e) {}
+        return;
+    }
     win = new BrowserWindow({
         width: NORMAL_SIZE.w, height: NORMAL_SIZE.h,
         minWidth: NORMAL_MIN.w, minHeight: NORMAL_MIN.h,
@@ -143,27 +207,11 @@ function createMainWindow() {
     tray = new Tray(path.join(ROOT, 'icon.png'));
     tray.setToolTip("BurnedWolf System Gateway");
 
-    // Tray right-click menu: show main window, quick-open every module, and quit.
-    const contextMenu = Menu.buildFromTemplate([
-        { label: 'Show BurnedWolf', click: () => {
-            if (win && !win.isDestroyed()) {
-                win.show();
-                win.focus();
-                if (!hiddenWindowsTracker.includes(win.id)) return;
-                // also restore any other windows the user had hidden into tray
-                BrowserWindow.getAllWindows().forEach(w => {
-                    if (!w.isDestroyed() && hiddenWindowsTracker.includes(w.id)) {
-                        w.show();
-                    }
-                });
-                hiddenWindowsTracker = [];
-            }
-        }},
-        { type: 'separator' },
-        { label: 'Quit BurnedWolf',   click: () => attemptExit() }
-    ]);
-
-    tray.setContextMenu(contextMenu);
+    // Tray right-click menu: show main window, (optionally) install a pending
+    // update, and quit. Built via buildTrayMenu() so it can be rebuilt later.
+    tray.setContextMenu(buildTrayMenu());
+    // If a check already found an update before the tray existed, reflect it now.
+    refreshUpdateTray(pendingUpdateInfo);
 
     tray.on('click', () => {
         if (hiddenWindowsTracker.length > 0) {
@@ -236,6 +284,7 @@ module.exports = {
     createMainWindow,
     createUpdaterWindow,
     createOnboardingWindow,
+    refreshUpdateTray,
     attemptExit,
     destroyTray,
     getMainWindow:       () => win,

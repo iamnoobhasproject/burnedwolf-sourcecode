@@ -290,6 +290,37 @@ async function chat(payload, sender) {
 }
 
 // ==========================================================================
+// AUTO-DIAGNOSE
+// ==========================================================================
+// One-click health triage. Hands the model a fresh snapshot (engine health,
+// cross-session stats and the recent event log) plus a focused instruction, then
+// reuses the normal chat turn — so with action mode on it can also apply the fix.
+async function diagnose(sender) {
+    const cfg = getConfig();
+    if (!cfg.enabled) return { ok: false, error: 'ai_disabled' };
+    if (!cfg.provider || !cfg.model) return { ok: false, error: 'ai_not_configured' };
+
+    let health = {}, stats = null, events = [];
+    try { health = require('../zapret/engine').getHealth(); } catch (e) {}
+    try {
+        const s = require('../zapret/stats').report();
+        stats = { totals: s.totals, profiles: (s.profiles || []).slice(0, 6), failovers: (s.failovers || []).slice(0, 6) };
+    } catch (e) {}
+    try { events = require('./eventlog').getEvents(40); } catch (e) {}
+
+    const snapshot = JSON.stringify({ health, stats, recentEvents: events }).slice(0, 6000);
+    const message = [
+        'AUTO-DIAGNOSE. Using the live context you already have plus the snapshot below, work out the single most likely problem with this connection right now (or confirm everything is healthy).',
+        'Check: is the DPI engine running and healthy? Is the profile the right one for this ISP? Would Discord voice (UDP) pass? Is DNS correct for this ISP? Are failovers happening repeatedly?',
+        'If action mode is ON, apply the best fix now (e.g. detect ISP, set a better profile, start protection, enable encrypted DNS, repair DNS residue), then report what you found and did in 2-4 short sentences. If action mode is OFF, explain the problem and the exact fix you would apply.',
+        '',
+        'SNAPSHOT: ' + snapshot
+    ].join('\n');
+
+    return await chat({ message, history: [] }, sender);
+}
+
+// ==========================================================================
 // IPC
 // ==========================================================================
 ipcMain.handle('ai-catalog', () => {
@@ -365,6 +396,14 @@ ipcMain.handle('ai-list-models', async (event, providerId, key, endpoint) => {
 ipcMain.handle('ai-chat', async (event, payload) => {
     try {
         return await chat(payload || {}, event.sender);
+    } catch (e) {
+        return { ok: false, error: 'internal', detail: String((e && e.message) || e) };
+    }
+});
+
+ipcMain.handle('ai-diagnose', async (event) => {
+    try {
+        return await diagnose(event.sender);
     } catch (e) {
         return { ok: false, error: 'internal', detail: String((e && e.message) || e) };
     }

@@ -4,7 +4,7 @@
    Every IPC channel below is unchanged from the working build; this file was
    rewritten for the Flat Weave world, not for new behaviour.
    ========================================================================== */
-const { ipcRenderer } = require('electron');
+const { ipcRenderer, clipboard } = require('electron');
 const i18n = require('../i18n');
 
 const i18nReady = i18n.init();
@@ -78,8 +78,8 @@ setTimeout(finishBoot, 4200);
 // --- VIEWS ---
 // ==========================================
 const views = ['homeView', 'aiView', 'aiSetupView', 'aiProviderView', 'aiLimitView', 'aiAuditView',
-    'dnsView', 'analysisView', 'verifyView', 'discordView', 'advancedView', 'settingsView'];
-const RAIL_OF = { aiSetupView: 'aiView', aiProviderView: 'aiView', aiLimitView: 'aiView', aiAuditView: 'aiView' };
+    'dnsView', 'analysisView', 'statsView', 'verifyView', 'discordView', 'advancedView', 'builderView', 'proxyView', 'bridgesView', 'donateView', 'settingsView'];
+const RAIL_OF = { aiSetupView: 'aiView', aiProviderView: 'aiView', aiLimitView: 'aiView', aiAuditView: 'aiView', builderView: 'advancedView', proxyView: 'advancedView', bridgesView: 'advancedView' };
 let windowMode = 'normal';
 let currentView = 'homeView';
 
@@ -106,6 +106,11 @@ function showView(id) {
     if (id === 'aiSetupView') renderProviders();
     if (id === 'aiLimitView') refreshUsage();
     if (id === 'aiAuditView') renderAudit();
+    if (id === 'statsView') refreshStats();
+    if (id === 'builderView') openBuilder();
+    if (id === 'proxyView') openProxy();
+    if (id === 'bridgesView') openBridges();
+    if (id === 'donateView') paintDonate();
 }
 
 const rail = Array.from(document.querySelectorAll('.rbtn'));
@@ -131,6 +136,7 @@ $('cardAi').addEventListener('click', () => openAi());
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+        if ($('donateOverlay').classList.contains('show')) { closeDonate(); return; }
         if ($('notesOverlay').classList.contains('show')) { closeNotes(); return; }
         if (currentView !== 'homeView') showView('homeView');
     }
@@ -150,7 +156,7 @@ const btnAutoPick = $('btnAutoPick');
 
 let engineRunning = false, engineMode = null, engineError = false;
 let startedAt = null, lastHealth = null;
-let profileLabels = {}, whitelistCache = '', savedCustomArgs = [];
+let profileLabels = {}, whitelistCache = '', savedCustomArgs = [], userProfilesMap = {};
 
 const profileLabel = (id) => !id ? '' : (id === 'custom' ? (profileLabels.custom || 'Custom') : (profileLabels[id] || id.toUpperCase()));
 
@@ -201,7 +207,7 @@ btnPower.addEventListener('click', () => {
         const mode = profileSelect.value || 'bw_standard';
         ipcRenderer.send('start-zapret', {
             mode,
-            customArgs: mode === 'custom' ? savedCustomArgs : null,
+            customArgs: argsForProfile(mode),
             whitelistData: whitelistCache,
             failover: !!(failoverToggle && failoverToggle.checked && !failoverToggle.disabled)
         });
@@ -591,6 +597,277 @@ function loadCustom() {
 }
 
 // ==========================================
+// --- PROFILE BUILDER ---
+// ==========================================
+// User-built DPI profiles live in localStorage 'bw_user_profiles' as
+// [{ id, name, args:[] }]. They show in the main profile dropdown under
+// "My profiles" and, when started, carry their own argv to the engine (which
+// keeps the id for stats). The legacy scan-generated 'custom' slot is untouched.
+function readUserProfiles() {
+    try { const l = JSON.parse(localStorage.getItem('bw_user_profiles') || '[]'); return Array.isArray(l) ? l : []; }
+    catch (e) { return []; }
+}
+function writeUserProfiles(list) {
+    try { localStorage.setItem('bw_user_profiles', JSON.stringify(list)); } catch (e) {}
+}
+
+// Register saved user profiles: dropdown optgroup + label map + args map.
+function loadUserProfiles() {
+    userProfilesMap = {};
+    const prev = profileSelect.querySelector('optgroup[data-user="1"]');
+    if (prev) prev.remove();
+    const list = readUserProfiles();
+    if (!list.length) return list;
+    const og = document.createElement('optgroup');
+    og.label = i18n.t('builder.my_profiles');
+    og.dataset.user = '1';
+    list.forEach(p => {
+        if (!p || !p.id) return;
+        userProfilesMap[p.id] = { name: p.name || 'Custom', args: Array.isArray(p.args) ? p.args : [] };
+        profileLabels[p.id] = p.name || 'Custom';
+        const o = document.createElement('option');
+        o.value = p.id; o.textContent = p.name || 'Custom';
+        og.appendChild(o);
+    });
+    profileSelect.appendChild(og);
+    return list;
+}
+
+// argv a profile id should start with; null = resolve from the built-in catalog.
+function argsForProfile(id) {
+    if (id === 'custom') return savedCustomArgs;
+    if (userProfilesMap[id]) return userProfilesMap[id].args;
+    return null;
+}
+
+let bpEditingId = null;   // set when editing an existing saved profile
+
+function tokenizeArgs(text) {
+    return String(text || '').split(/\s+/).map(t => t.trim()).filter(Boolean);
+}
+
+function bpAnalyze(tokens) {
+    const argStr = tokens.join(' ');
+    const chains = tokens.filter(t => t === '--new').length + (tokens.length ? 1 : 0);
+    const voice = argStr.includes('--filter-udp=50000-65535') || argStr.includes('--dpi-desync-any-protocol');
+    const hasWf = tokens.some(t => t.startsWith('--wf-tcp') || t.startsWith('--wf-udp'));
+    const hasDesync = tokens.some(t => t.startsWith('--dpi-desync'));
+    const bad = tokens.filter(t => !t.startsWith('--'));
+    return { chains, voice, hasWf, hasDesync, bad };
+}
+
+function bpRenderSummary() {
+    if (!$('bpArgs')) return;
+    const tokens = tokenizeArgs($('bpArgs').value);
+    const a = bpAnalyze(tokens);
+    const box = $('bpSummary');
+    const warn = a.bad.length || !a.hasWf || !a.hasDesync;
+    if (box) box.classList.toggle('warn', !!warn);
+    $('bpSummaryTitle').textContent = i18n.t('builder.summary_title', { chains: a.chains, n: tokens.length });
+    const parts = [ a.voice ? i18n.t('builder.voice_yes') : i18n.t('builder.voice_no') ];
+    if (!a.hasWf) parts.push(i18n.t('builder.warn_nowf'));
+    if (!a.hasDesync) parts.push(i18n.t('builder.warn_nodesync'));
+    if (a.bad.length) parts.push(i18n.t('builder.warn_badtokens', { t: a.bad.slice(0, 3).join(', ') }));
+    $('bpSummaryText').textContent = parts.join(' · ');
+}
+
+const BP_CHIPS = [
+    '--new',
+    '--wf-tcp=80,443', '--wf-udp=443,50000-65535',
+    '--filter-tcp=80,443', '--filter-tcp=443', '--filter-udp=443', '--filter-udp=50000-65535',
+    '--dpi-desync=fake', '--dpi-desync=split2', '--dpi-desync=fake,split2', '--dpi-desync=fake,disorder2', '--dpi-desync=fake,multisplit',
+    '--dpi-desync-fooling=md5sig', '--dpi-desync-fooling=md5sig,badseq',
+    '--dpi-desync-autottl=2', '--dpi-desync-repeats=6', '--dpi-desync-split-pos=2', '--dpi-desync-any-protocol'
+];
+
+function bpBuildChips() {
+    const box = $('bpChips');
+    if (!box || box.childElementCount) return; // build once
+    BP_CHIPS.forEach(flag => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = flag === '--new' ? i18n.t('builder.new_chain') : flag;
+        b.title = flag;
+        b.addEventListener('click', () => {
+            const ta = $('bpArgs');
+            const cur = ta.value.replace(/\s+$/, '');
+            ta.value = (cur ? cur + '\n' : '') + flag + '\n';
+            bpRenderSummary();
+        });
+        box.appendChild(b);
+    });
+}
+
+function bpFillCloneOptions() {
+    const sel = $('bpClone');
+    if (!sel) return;
+    sel.replaceChildren();
+    const blank = document.createElement('option');
+    blank.value = ''; blank.textContent = i18n.t('builder.clone_blank');
+    sel.appendChild(blank);
+    Object.keys(profileLabels).forEach(id => {
+        if (id === 'custom' || userProfilesMap[id]) return; // built-ins only
+        const o = document.createElement('option');
+        o.value = id; o.textContent = profileLabels[id];
+        sel.appendChild(o);
+    });
+}
+
+function bpRenderList() {
+    const box = $('bpList');
+    if (!box) return;
+    box.replaceChildren();
+    const list = readUserProfiles();
+    if (!list.length) {
+        const e = document.createElement('div');
+        e.className = 'rank-empty'; e.textContent = i18n.t('builder.none');
+        box.appendChild(e);
+        return;
+    }
+    list.forEach(p => {
+        const row = document.createElement('div');
+        row.className = 'rank';
+        const rb = document.createElement('div'); rb.className = 'rb';
+        const rn = document.createElement('div'); rn.className = 'rn'; rn.textContent = p.name || 'Custom';
+        const rm = document.createElement('div'); rm.className = 'rm';
+        const meta = document.createElement('span'); meta.textContent = i18n.t('builder.list_meta', { n: (p.args || []).length });
+        rm.appendChild(meta);
+        rb.append(rn, rm);
+        const actions = document.createElement('div');
+        actions.style.marginLeft = 'auto'; actions.style.display = 'flex'; actions.style.gap = 'var(--s2)';
+        const useB = document.createElement('button'); useB.className = 'act plain sm'; useB.textContent = i18n.t('builder.use');
+        useB.addEventListener('click', () => bpUse(p.id));
+        const editB = document.createElement('button'); editB.className = 'act plain sm'; editB.textContent = i18n.t('builder.edit');
+        editB.addEventListener('click', () => bpEdit(p.id));
+        actions.append(useB, editB);
+        row.append(rb, actions);
+        box.appendChild(row);
+    });
+}
+
+function openBuilder() {
+    bpBuildChips();
+    bpFillCloneOptions();
+    bpRenderList();
+    bpRenderSummary();
+}
+
+function bpNew() {
+    bpEditingId = null;
+    if ($('bpName')) $('bpName').value = '';
+    if ($('bpArgs')) $('bpArgs').value = '';
+    if ($('btnDeleteProfile')) $('btnDeleteProfile').style.display = 'none';
+    if ($('bpStatus')) $('bpStatus').textContent = '';
+    bpRenderSummary();
+}
+
+function bpEdit(id) {
+    const p = readUserProfiles().find(x => x.id === id);
+    if (!p) return;
+    bpEditingId = id;
+    $('bpName').value = p.name || '';
+    $('bpArgs').value = (p.args || []).join('\n');
+    $('btnDeleteProfile').style.display = '';
+    $('bpStatus').textContent = '';
+    bpRenderSummary();
+    showView('builderView');
+}
+
+function bpUse(id) {
+    loadUserProfiles();
+    if (profileLabels[id] || id === 'custom') {
+        profileSelect.value = id;
+        ipcRenderer.invoke('settings-set', 'last_profile', id);
+        paintProfileName();
+    }
+    showView('homeView');
+}
+
+function bpSave(useAfter) {
+    const name = ($('bpName').value || '').trim();
+    const args = tokenizeArgs($('bpArgs').value);
+    if (!name) { $('bpStatus').textContent = i18n.t('builder.need_name'); return null; }
+    if (!args.length) { $('bpStatus').textContent = i18n.t('builder.need_args'); return null; }
+    const list = readUserProfiles();
+    let id = bpEditingId;
+    if (id) {
+        const idx = list.findIndex(x => x.id === id);
+        if (idx >= 0) list[idx] = { id, name, args }; else list.push({ id, name, args });
+    } else {
+        id = 'user_' + Date.now().toString(36);
+        list.push({ id, name, args });
+        bpEditingId = id;
+    }
+    writeUserProfiles(list);
+    loadUserProfiles();
+    if ($('btnDeleteProfile')) $('btnDeleteProfile').style.display = '';
+    $('bpStatus').textContent = i18n.t('builder.saved');
+    bpRenderList();
+    if (useAfter) bpUse(id);
+    return id;
+}
+
+function bpDelete() {
+    if (!bpEditingId) return;
+    const deleted = bpEditingId;
+    writeUserProfiles(readUserProfiles().filter(x => x.id !== deleted));
+    loadUserProfiles();
+    if (profileSelect.value === deleted) {
+        profileSelect.value = 'bw_standard';
+        ipcRenderer.invoke('settings-set', 'last_profile', 'bw_standard');
+        paintProfileName();
+    }
+    bpNew();
+    bpRenderList();
+}
+
+// --- builder wiring ---
+if ($('btnOpenBuilder')) $('btnOpenBuilder').addEventListener('click', () => { bpNew(); showView('builderView'); });
+if ($('bpArgs')) $('bpArgs').addEventListener('input', bpRenderSummary);
+if ($('btnCloneLoad')) $('btnCloneLoad').addEventListener('click', async () => {
+    const id = $('bpClone').value;
+    if (!id) return;
+    let args = null;
+    try { args = await ipcRenderer.invoke('get-profile-args', id); } catch (e) {}
+    if (Array.isArray(args)) {
+        $('bpArgs').value = args.join('\n');
+        if (!$('bpName').value.trim()) $('bpName').value = (profileLabels[id] || id) + ' (copy)';
+        bpRenderSummary();
+    }
+});
+if ($('btnSaveProfile')) $('btnSaveProfile').addEventListener('click', () => bpSave(false));
+if ($('btnSaveUseProfile')) $('btnSaveUseProfile').addEventListener('click', () => bpSave(true));
+if ($('btnDeleteProfile')) $('btnDeleteProfile').addEventListener('click', bpDelete);
+if ($('btnExportProfile')) $('btnExportProfile').addEventListener('click', async () => {
+    const name = ($('bpName').value || '').trim() || 'Custom';
+    const args = tokenizeArgs($('bpArgs').value);
+    if (!args.length) { $('bpStatus').textContent = i18n.t('builder.need_args'); return; }
+    let r = null;
+    try { r = await ipcRenderer.invoke('profile-export', { name, args }); } catch (e) {}
+    if (r && r.ok) $('bpStatus').textContent = i18n.t('builder.export_ok');
+    else if (r && r.canceled) $('bpStatus').textContent = '';
+    else $('bpStatus').textContent = i18n.t('builder.op_failed');
+});
+if ($('btnImportProfile')) $('btnImportProfile').addEventListener('click', async () => {
+    let r = null;
+    try { r = await ipcRenderer.invoke('profile-import'); } catch (e) {}
+    if (r && r.ok) {
+        bpEditingId = null;
+        $('bpName').value = r.name || 'Imported';
+        $('bpArgs').value = (r.args || []).join('\n');
+        if ($('btnDeleteProfile')) $('btnDeleteProfile').style.display = 'none';
+        $('bpStatus').textContent = i18n.t('builder.import_ok');
+        bpRenderSummary();
+    } else if (r && r.canceled) {
+        $('bpStatus').textContent = '';
+    } else if (r && r.error === 'invalid') {
+        $('bpStatus').textContent = i18n.t('builder.import_invalid');
+    } else {
+        $('bpStatus').textContent = i18n.t('builder.op_failed');
+    }
+});
+
+// ==========================================
 // --- ADVANCED ---
 // ==========================================
 const failoverToggle = $('failoverToggle'), trMasterToggle = $('trMasterToggle');
@@ -651,18 +928,22 @@ ipcRenderer.on('tor-log', (e, m) => { if (String(m).includes('Bootstrapped')) pu
 // --- UPDATE NOTES ---
 // ==========================================
 const notesOverlay = $('notesOverlay');
-function closeNotes() { notesOverlay.classList.remove('show'); }
+// Closing the notes hands the screen to the support sheet, so the two never
+// stack on top of each other at launch.
+function closeNotes() { notesOverlay.classList.remove('show'); maybeDonate(); }
 $('notesClose').addEventListener('click', closeNotes);
 notesOverlay.addEventListener('click', e => { if (e.target === notesOverlay) closeNotes(); });
 
+// Resolves true when the sheet actually went up — the boot sequence uses that
+// to decide whether the support sheet may open immediately instead.
 async function maybeNotes() {
     let on = true;
     try { on = (await ipcRenderer.invoke('settings-get', 'show_update_notes')) !== false; } catch (e) {}
-    if (!on) return;
+    if (!on) return false;
     try {
         const res = await fetch('https://raw.githubusercontent.com/iamnoobhasproject/app-updates/main/logs.txt?t=' + Date.now());
         const lines = (await res.text()).split('\n').map(l => l.trim()).filter(Boolean);
-        if (!lines.length) return;
+        if (!lines.length) return false;
         const body = $('notesBody');
         body.replaceChildren();
         lines.forEach(l => {
@@ -677,7 +958,85 @@ async function maybeNotes() {
             if (v && v.version) $('notesVersion').textContent = 'v' + v.version;
         } catch (e) {}
         notesOverlay.classList.add('show');
+        return true;
     } catch (e) {}
+    return false;
+}
+
+// ==========================================
+// --- SUPPORT / DONATION ---
+// ==========================================
+// The address never lives here. Main owns it (src/main/donate.js) and this file
+// only renders what main hands over, so a renderer-side mistake can't put a
+// wrong address on screen or a renderer-supplied string into shell.openExternal.
+const donateOverlay = $('donateOverlay');
+let donateInfo = null;
+
+async function paintDonate() {
+    if (!donateInfo) {
+        try { donateInfo = await ipcRenderer.invoke('donate-info'); } catch (e) { return; }
+    }
+    if (!donateInfo || !donateInfo.address) return;
+    ['donateAddr', 'donateAddr2'].forEach(id => { const el = $(id); if (el) el.textContent = donateInfo.address; });
+}
+
+// Transient one-line feedback next to the buttons; clears itself so the panel
+// doesn't keep a stale "Copied" sitting there for the rest of the session.
+function donateSay(el, key, bad) {
+    if (!el) return;
+    el.textContent = i18n.t(key);
+    el.classList.toggle('bad', !!bad);
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.textContent = ''; el.classList.remove('bad'); }, 2800);
+}
+
+async function donateCopy(said) {
+    let ok = false;
+    try { ok = (await ipcRenderer.invoke('donate-copy')) === true; } catch (e) {}
+    donateSay(said, ok ? 'donate.copied' : 'donate.copy_failed', !ok);
+}
+
+async function donateWallet(said) {
+    let r = null;
+    try { r = await ipcRenderer.invoke('donate-open-wallet'); } catch (e) {}
+    // No wallet registered for bitcoin: is the normal case, not an error worth
+    // shouting about — the address and the QR are still right there.
+    if (!r || !r.ok) donateSay(said, 'donate.no_wallet', true);
+}
+
+function closeDonate() { donateOverlay.classList.remove('show'); }
+$('donateClose').addEventListener('click', closeDonate);
+$('btnDonateLater').addEventListener('click', closeDonate);
+donateOverlay.addEventListener('click', e => { if (e.target === donateOverlay) closeDonate(); });
+$('btnDonateNever').addEventListener('click', async () => {
+    try { await ipcRenderer.invoke('settings-set', 'show_donate', false); } catch (e) {}
+    if ($('donateToggle')) $('donateToggle').checked = false;
+    closeDonate();
+});
+
+$('btnDonateCopy').addEventListener('click', () => donateCopy($('donateSaid')));
+$('btnDonateCopy2').addEventListener('click', () => donateCopy($('donateSaid2')));
+$('btnDonateWallet').addEventListener('click', () => donateWallet($('donateSaid')));
+$('btnDonateWallet2').addEventListener('click', () => donateWallet($('donateSaid2')));
+
+// Launch policy. Asking for money on every single launch is how an app teaches
+// people to close it fast, so: at most once per session, never stacked on the
+// update notes, silenced permanently by "Don't show this again", and quiet for
+// a week after each time it appears.
+const DONATE_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+let donateAsked = false;
+
+async function maybeDonate() {
+    if (donateAsked) return;
+    donateAsked = true;
+    try {
+        if ((await ipcRenderer.invoke('settings-get', 'show_donate')) === false) return;
+        const last = Number(await ipcRenderer.invoke('settings-get', 'donate_last_shown')) || 0;
+        if (last && Date.now() - last < DONATE_COOLDOWN_MS) return;
+        await ipcRenderer.invoke('settings-set', 'donate_last_shown', Date.now());
+    } catch (e) { return; }
+    await paintDonate();
+    donateOverlay.classList.add('show');
 }
 
 // ==========================================
@@ -719,7 +1078,354 @@ const updateNotesToggle = $('updateNotesToggle');
 (async () => { const s = await ipcRenderer.invoke('settings-get', 'show_update_notes'); updateNotesToggle.checked = s === undefined ? true : s === true; })();
 updateNotesToggle.addEventListener('change', e => ipcRenderer.invoke('settings-set', 'show_update_notes', e.target.checked));
 
+const donateToggle = $('donateToggle');
+(async () => { const s = await ipcRenderer.invoke('settings-get', 'show_donate'); donateToggle.checked = s === undefined ? true : s === true; })();
+donateToggle.addEventListener('change', async e => {
+    await ipcRenderer.invoke('settings-set', 'show_donate', e.target.checked);
+    // Turning it back on should mean "ask me next launch", not "wait out the
+    // rest of a cooldown the user has already forgotten about".
+    if (e.target.checked) await ipcRenderer.invoke('settings-set', 'donate_last_shown', 0);
+});
+$('btnOpenDonate').addEventListener('click', () => showView('donateView'));
+
+// --- Manual "check for updates" + background-check badge ---
+// The main process owns the actual version check (updater.js). Here we drive the
+// Settings button and reflect a pending update as a rail badge + "Install now".
+const btnCheckUpdate    = $('btnCheckUpdate');
+const btnInstallUpdate  = $('btnInstallUpdate');
+const checkUpdateStatus = $('checkUpdateStatus');
+
+function setSettingsUpdateBadge(on) {
+    const navBtn = document.querySelector('.rbtn[data-nav="settingsView"]');
+    if (navBtn) navBtn.classList.toggle('has-update', !!on);
+}
+function markUpdateAvailable(v) {
+    if (checkUpdateStatus) checkUpdateStatus.textContent = i18n.t('settings.update_found', { v });
+    if (btnInstallUpdate) btnInstallUpdate.hidden = false;
+    setSettingsUpdateBadge(true);
+}
+
+if (btnCheckUpdate) btnCheckUpdate.addEventListener('click', async () => {
+    btnCheckUpdate.disabled = true;
+    if (checkUpdateStatus) checkUpdateStatus.textContent = i18n.t('settings.checking');
+    let r = null;
+    try { r = await ipcRenderer.invoke('check-update-now'); } catch (e) {}
+    btnCheckUpdate.disabled = false;
+    if (!r || r.state === 'error') { if (checkUpdateStatus) checkUpdateStatus.textContent = i18n.t('settings.check_failed'); return; }
+    if (r.state === 'update') {
+        markUpdateAvailable(r.new);
+    } else {
+        if (checkUpdateStatus) checkUpdateStatus.textContent = i18n.t('settings.up_to_date');
+        if (btnInstallUpdate) btnInstallUpdate.hidden = true;
+        setSettingsUpdateBadge(false);
+    }
+});
+
+if (btnInstallUpdate) btnInstallUpdate.addEventListener('click', () => ipcRenderer.send('open-updater-window'));
+
+// The background checker in main broadcasts this when it finds a newer build.
+ipcRenderer.on('update-available-bg', (e, info) => { if (info && info.new) markUpdateAvailable(info.new); });
+
+// --- Config backup: export / import (main: backup.js) ---
+const btnExportConfig = $('btnExportConfig');
+const btnImportConfig = $('btnImportConfig');
+const backupStatus    = $('backupStatus');
+
+if (btnExportConfig) btnExportConfig.addEventListener('click', async () => {
+    btnExportConfig.disabled = true;
+    let r = null;
+    try { r = await ipcRenderer.invoke('config-export'); } catch (e) {}
+    btnExportConfig.disabled = false;
+    if (r && r.ok) backupStatus.textContent = i18n.t('settings.export_ok');
+    else if (r && r.canceled) backupStatus.textContent = '';
+    else backupStatus.textContent = i18n.t('settings.backup_failed');
+});
+
+if (btnImportConfig) btnImportConfig.addEventListener('click', async () => {
+    btnImportConfig.disabled = true;
+    let r = null;
+    try { r = await ipcRenderer.invoke('config-import'); } catch (e) {}
+    btnImportConfig.disabled = false;
+    if (r && r.ok) backupStatus.textContent = i18n.t('settings.import_ok');
+    else if (r && r.canceled) backupStatus.textContent = '';
+    else if (r && r.error === 'invalid') backupStatus.textContent = i18n.t('settings.import_invalid');
+    else backupStatus.textContent = i18n.t('settings.backup_failed');
+});
+
+// After an import, re-pull the visible toggles + AI config so the UI matches the
+// newly-applied settings without a restart. (Launch-only settings still take
+// full effect next launch — the status line tells the user.)
+ipcRenderer.on('config-imported', async () => {
+    try {
+        const as = (await ipcRenderer.invoke('settings-get', 'autostart')) === true;
+        autoStartToggle.checked = as;
+        ipcRenderer.send('set-autostart', as); // apply the imported autostart state now
+        const au = await ipcRenderer.invoke('settings-get', 'auto_update');       autoUpdateToggle.checked  = au === undefined ? true : au === true;
+        const un = await ipcRenderer.invoke('settings-get', 'show_update_notes');  updateNotesToggle.checked = un === undefined ? true : un === true;
+        const dn = await ipcRenderer.invoke('settings-get', 'show_donate');        donateToggle.checked      = dn === undefined ? true : dn === true;
+        failoverToggle.checked = (await ipcRenderer.invoke('settings-get', 'dpi_failover')) === true;
+        const tr = await ipcRenderer.invoke('settings-get', 'dpi_use_tr_master_list'); trMasterToggle.checked = tr === undefined ? true : tr === true;
+    } catch (e) {}
+    try { aiConfig = await ipcRenderer.invoke('ai-config-get'); paintAi(); } catch (e) {}
+    try { highlightActiveLang(); } catch (e) {}
+});
+
 $('btnOpenAiSettings').addEventListener('click', () => showView('aiSetupView'));
+
+// ==========================================
+// --- PROXY BRIDGE ---
+// ==========================================
+// Surfaces Tor's SOCKS endpoint, an optional HTTP→SOCKS bridge, and a PAC file
+// so other apps can route through Tor. All the real work is in main (proxy.js);
+// this only drives the UI.
+let proxyWired = false;
+
+function pxCopy(text, statusEl) {
+    try { clipboard.writeText(String(text || '')); if (statusEl) statusEl.textContent = i18n.t('proxy.copied'); } catch (e) {}
+}
+
+async function refreshProxy() {
+    let s = null;
+    try { s = await ipcRenderer.invoke('proxy-status'); } catch (e) {}
+    if (!s) return;
+    if ($('pxTor')) $('pxTor').textContent = s.torReady ? i18n.t('home.tor_ready') : i18n.t('home.tor_idle');
+    if ($('pxTorSub')) $('pxTorSub').textContent = s.torReady ? i18n.t('proxy.tor_on', { p: s.socksPort }) : i18n.t('proxy.tor_off');
+    if ($('btnProxyStartTor')) $('btnProxyStartTor').style.display = s.torReady ? 'none' : '';
+    if ($('pxSocks')) $('pxSocks').textContent = `${s.socksHost}:${s.socksPort}`;
+    if ($('pxHttp')) $('pxHttp').textContent = `${s.socksHost}:${s.httpPort}`;
+    if ($('btnToggleHttp')) $('btnToggleHttp').textContent = i18n.t(s.httpRunning ? 'proxy.disable' : 'proxy.enable');
+    if ($('pxHttpStatus')) $('pxHttpStatus').textContent = s.httpRunning ? i18n.t('proxy.http_on', { p: s.httpPort }) : '';
+}
+
+function openProxy() {
+    refreshProxy();
+    if (proxyWired) return;
+    proxyWired = true;
+    $('btnProxyStartTor').addEventListener('click', () => {
+        ipcRenderer.send('start-tor');
+        if ($('pxTorSub')) $('pxTorSub').textContent = i18n.t('discord.status_establishing');
+    });
+    $('btnCopySocks').addEventListener('click', () => pxCopy($('pxSocks').textContent, $('pxHttpStatus')));
+    $('btnCopyHttp').addEventListener('click', () => pxCopy($('pxHttp').textContent, $('pxHttpStatus')));
+    $('btnToggleHttp').addEventListener('click', async () => {
+        let s = null;
+        try { s = await ipcRenderer.invoke('proxy-status'); } catch (e) {}
+        try {
+            if (s && s.httpRunning) await ipcRenderer.invoke('proxy-http-stop');
+            else await ipcRenderer.invoke('proxy-http-start', 9080);
+        } catch (e) {}
+        refreshProxy();
+    });
+    $('btnGenPac').addEventListener('click', async () => {
+        let r = null;
+        try { r = await ipcRenderer.invoke('proxy-write-pac'); } catch (e) {}
+        if (r && r.ok) { $('pxPac').textContent = r.url; $('pxPacStatus').textContent = i18n.t('proxy.pac_saved'); }
+        else { $('pxPacStatus').textContent = i18n.t('proxy.pac_failed'); }
+    });
+    $('btnCopyPac').addEventListener('click', () => pxCopy($('pxPac').textContent, $('pxPacStatus')));
+}
+
+if ($('btnOpenProxy')) $('btnOpenProxy').addEventListener('click', () => showView('proxyView'));
+// Keep the proxy view's Tor line live if Tor becomes ready while it is open.
+ipcRenderer.on('tor-ready', () => { if (currentView === 'proxyView') refreshProxy(); });
+
+// ==========================================
+// --- TOR BRIDGES (pluggable transports) ---
+// ==========================================
+// UI over the bridge config in main (tor.js). The transport binaries live in
+// tor-bin/ and are the user's to supply; availability is reflected here.
+let bridgesWired = false;
+let brTransport = 'obfs4';
+
+function paintBridgeAvail(s) {
+    if (!s || !$('brAvail')) return;
+    const avail = brTransport === 'snowflake' ? s.snowflakeAvailable : s.obfs4Available;
+    const f = brTransport === 'snowflake' ? 'snowflake-client.exe' : 'obfs4proxy.exe / lyrebird.exe';
+    $('brAvail').textContent = avail ? i18n.t('bridges.avail_ok', { f }) : i18n.t('bridges.avail_missing', { f });
+    $('brAvail').style.color = avail ? 'var(--ok-lit)' : 'var(--bad-lit)';
+}
+function paintTransportPick() {
+    document.querySelectorAll('#brTransport button').forEach(b => b.classList.toggle('on', b.dataset.t === brTransport));
+}
+async function refreshBridges() {
+    let s = null;
+    try { s = await ipcRenderer.invoke('tor-bridge-config'); } catch (e) {}
+    if (!s) return;
+    if ($('brEnable')) $('brEnable').checked = s.enabled;
+    brTransport = s.transport;
+    paintTransportPick();
+    if ($('brLines')) $('brLines').value = s.lines || '';
+    paintBridgeAvail(s);
+    if ($('brStatus')) $('brStatus').textContent = s.torRunning ? (s.torReady ? i18n.t('home.tor_ready') : i18n.t('discord.status_establishing')) : i18n.t('home.tor_idle');
+}
+async function saveBridges(restart) {
+    const cfg = { enabled: $('brEnable').checked, transport: brTransport, lines: $('brLines').value };
+    try { await ipcRenderer.invoke('tor-bridge-save', cfg); } catch (e) {}
+    if (restart) {
+        try { await ipcRenderer.invoke('tor-restart'); } catch (e) {}
+        if ($('brSaveStatus')) $('brSaveStatus').textContent = i18n.t('bridges.restarting');
+    } else if ($('brSaveStatus')) {
+        $('brSaveStatus').textContent = i18n.t('bridges.saved');
+    }
+    refreshBridges();
+}
+function openBridges() {
+    refreshBridges();
+    if (bridgesWired) return;
+    bridgesWired = true;
+    document.querySelectorAll('#brTransport button').forEach(b => b.addEventListener('click', async () => {
+        brTransport = b.dataset.t;
+        paintTransportPick();
+        try { paintBridgeAvail(await ipcRenderer.invoke('tor-bridge-config')); } catch (e) {}
+    }));
+    if ($('btnBridgeSave')) $('btnBridgeSave').addEventListener('click', () => saveBridges(false));
+    if ($('btnBridgeRestart')) $('btnBridgeRestart').addEventListener('click', () => saveBridges(true));
+}
+if ($('btnOpenBridges')) $('btnOpenBridges').addEventListener('click', () => showView('bridgesView'));
+ipcRenderer.on('tor-ready', () => { if (currentView === 'bridgesView') refreshBridges(); });
+
+// ==========================================
+// --- STATS PANEL ---
+// ==========================================
+// Reads the persisted engine stats (main: zapret/stats.js) and paints the
+// tiles, sparkline, per-profile ranks and failover history. A 1s ticker keeps
+// the live "uptime" tile moving while the panel is open and a session runs.
+let lastStats = null;
+let statsTicker = null;
+
+function fmtDur(ms) {
+    const s = Math.floor((ms || 0) / 1000);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    return h > 0 ? i18n.t('home.uptime_hm', { h, m }) : i18n.t('home.uptime_m', { m });
+}
+
+function renderSpark(timeline) {
+    const el = $('stSpark');
+    if (!el) return;
+    const pts = (timeline || []).slice(-60);
+    el.replaceChildren();
+    if (!pts.length) {
+        el.style.alignItems = 'center';
+        el.style.justifyContent = 'center';
+        const e = document.createElement('span');
+        e.className = 'tiny';
+        e.textContent = i18n.t('stats.timeline_empty');
+        el.appendChild(e);
+        return;
+    }
+    el.style.alignItems = 'flex-end';
+    el.style.justifyContent = '';
+    pts.forEach(p => {
+        const rate = p.total ? (p.ok / p.total) : 0;
+        const bar = document.createElement('i');
+        bar.style.height = Math.max(8, Math.round(rate * 100)) + '%';
+        if (rate < 0.5) bar.classList.add('bad');
+        else if (rate < 0.85) bar.classList.add('warn');
+        bar.title = Math.round(rate * 100) + '%';
+        el.appendChild(bar);
+    });
+}
+
+function renderProfileRanks(profiles) {
+    const el = $('stProfiles');
+    if (!el) return;
+    el.replaceChildren();
+    if (!profiles || !profiles.length) {
+        const e = document.createElement('div');
+        e.className = 'rank-empty';
+        e.textContent = i18n.t('stats.no_profiles');
+        el.appendChild(e);
+        return;
+    }
+    profiles.forEach((p, i) => {
+        const row = document.createElement('div');
+        row.className = 'rank' + (i === 0 ? ' first' : '');
+        const n = document.createElement('div'); n.className = 'n'; n.textContent = String(i + 1);
+        const rb = document.createElement('div'); rb.className = 'rb';
+        const rn = document.createElement('div'); rn.className = 'rn'; rn.textContent = profileLabel(p.id);
+        const rm = document.createElement('div'); rm.className = 'rm';
+        const sr = document.createElement('span');
+        if (p.successRate === null) {
+            sr.textContent = i18n.t('stats.no_data');
+        } else {
+            sr.textContent = i18n.t('stats.success_n', { n: p.successRate });
+            sr.className = p.successRate >= 85 ? 'y' : (p.successRate < 50 ? 'n2' : '');
+        }
+        const rt = document.createElement('span'); rt.textContent = fmtDur(p.runtimeMs);
+        const ss = document.createElement('span'); ss.textContent = i18n.t('stats.sessions_n', { n: p.sessions });
+        rm.append(sr, rt, ss);
+        rb.append(rn, rm);
+        row.append(n, rb);
+        el.appendChild(row);
+    });
+}
+
+function renderFailovers(list) {
+    const el = $('stFailoverList');
+    if (!el) return;
+    el.replaceChildren();
+    if (!list || !list.length) {
+        const e = document.createElement('div');
+        e.className = 'rank-empty';
+        e.textContent = i18n.t('stats.no_failovers');
+        el.appendChild(e);
+        return;
+    }
+    list.slice(0, 20).forEach(f => {
+        const row = document.createElement('div');
+        row.className = 'rank';
+        const rb = document.createElement('div'); rb.className = 'rb';
+        const rn = document.createElement('div'); rn.className = 'rn';
+        rn.textContent = `${profileLabel(f.from) || '—'} → ${profileLabel(f.to) || '—'}`;
+        const rm = document.createElement('div'); rm.className = 'rm';
+        const t = document.createElement('span'); t.textContent = new Date(f.ts).toLocaleString();
+        rm.append(t);
+        rb.append(rn, rm);
+        row.append(rb);
+        el.appendChild(row);
+    });
+}
+
+async function refreshStats() {
+    let s = null;
+    try { s = await ipcRenderer.invoke('get-engine-stats'); } catch (e) {}
+    if (!s) return;
+    lastStats = s;
+
+    if (s.currentSession) {
+        $('stUptime').textContent = fmtDur(Date.now() - s.currentSession.start);
+        $('stUptimeSub').textContent = profileLabel(s.currentSession.profile);
+    } else {
+        $('stUptime').textContent = '—';
+        $('stUptimeSub').textContent = i18n.t('stats.idle_short');
+    }
+    $('stRuntime').textContent = fmtDur(s.totals.runtimeMs);
+    $('stSessions').textContent = i18n.t('stats.sessions_n', { n: s.totals.sessions });
+    $('stSuccess').textContent = s.totals.successRate === null ? '—' : (s.totals.successRate + '%');
+    $('stProbes').textContent = i18n.t('stats.probes_n', { ok: s.totals.ok, n: s.totals.ok + s.totals.fail });
+    $('stFailovers').textContent = String(s.totals.failoverCount);
+
+    renderSpark(s.timeline);
+    renderProfileRanks(s.profiles);
+    renderFailovers(s.failovers);
+
+    // Live uptime ticker — only while the panel is open and a session is running.
+    if (statsTicker) { clearInterval(statsTicker); statsTicker = null; }
+    if (s.currentSession && currentView === 'statsView') {
+        statsTicker = setInterval(() => {
+            if (currentView !== 'statsView') { clearInterval(statsTicker); statsTicker = null; return; }
+            if (lastStats && lastStats.currentSession) {
+                $('stUptime').textContent = fmtDur(Date.now() - lastStats.currentSession.start);
+            }
+        }, 1000);
+    }
+}
+
+if ($('btnResetStats')) $('btnResetStats').addEventListener('click', async () => {
+    try { await ipcRenderer.invoke('reset-engine-stats'); } catch (e) {}
+    refreshStats();
+});
 
 // ==========================================
 // --- INTEGRITY ---
@@ -1196,6 +1902,7 @@ $('btnOpenPricing').addEventListener('click', () => { if (activeProvider) ipcRen
 $('btnBackToProviders').addEventListener('click', () => showView('aiSetupView'));
 $('btnAiSettings').addEventListener('click', () => showView('aiSetupView'));
 $('btnAiLimits').addEventListener('click', () => showView('aiLimitView'));
+if ($('btnAiDiagnose')) $('btnAiDiagnose').addEventListener('click', diagnoseAi);
 $('btnBackFromLimits').addEventListener('click', () => showView(aiConfig.enabled && aiConfig.model ? 'aiView' : 'aiSetupView'));
 $('btnAiAudit').addEventListener('click', () => showView('aiAuditView'));
 $('btnBackFromAudit').addEventListener('click', () => showView('aiSetupView'));
@@ -1210,14 +1917,11 @@ const AI_ERR = {
     ai_no_key: 'ai.err_no_key', ai_no_endpoint: 'ai.err_no_endpoint', ai_unknown_provider: 'ai.err_provider'
 };
 
-async function sendAi() {
+// Shared AI turn — used by the text composer and by one-click auto-diagnose.
+async function runAiExchange(userLabel, invoke) {
     if (aiBusy) return;
-    const text = aiInput.value.trim();
-    if (!text) return;
     if (!aiConfig.enabled || !aiConfig.provider || !aiConfig.model) { showView('aiSetupView'); return; }
-
-    aiInput.value = ''; aiInput.style.height = 'auto';
-    addMsg('user', text);
+    addMsg('user', userLabel);
     $('aiSuggest').replaceChildren();
     aiBusy = true; aiSend.disabled = true;
 
@@ -1233,7 +1937,7 @@ async function sendAi() {
     ipcRenderer.on('ai-progress', onProgress);
 
     let res;
-    try { res = await ipcRenderer.invoke('ai-chat', { message: text, history: aiHistory }); }
+    try { res = await invoke(); }
     catch (e) { res = { ok: false, error: 'internal', detail: String(e && e.message || e) }; }
     ipcRenderer.removeListener('ai-progress', onProgress);
     live.remove();
@@ -1241,7 +1945,7 @@ async function sendAi() {
     if (res && res.ok) {
         const body = res.text && res.text.trim() ? res.text : i18n.t('ai.done_no_text');
         addMsg('ai', body, { performed: res.performed });
-        aiHistory.push({ role: 'user', content: text });
+        aiHistory.push({ role: 'user', content: userLabel });
         aiHistory.push({ role: 'assistant', content: body });
         if (res.performed && res.performed.some(p => p.mutating && p.ok)) resync();
         refreshUsage();
@@ -1250,6 +1954,23 @@ async function sendAi() {
         addMsg('ai', k ? i18n.t(k) : i18n.t('ai.err_provider_detail', { e: String((res && (res.detail || res.error)) || 'unknown').slice(0, 220) }), { error: true });
     }
     aiBusy = false; aiSend.disabled = false; aiInput.focus();
+}
+
+async function sendAi() {
+    if (aiBusy) return;
+    const text = aiInput.value.trim();
+    if (!text) return;
+    if (!aiConfig.enabled || !aiConfig.provider || !aiConfig.model) { showView('aiSetupView'); return; }
+    aiInput.value = ''; aiInput.style.height = 'auto';
+    await runAiExchange(text, () => ipcRenderer.invoke('ai-chat', { message: text, history: aiHistory }));
+}
+
+// One-click auto-diagnose: no typing — main gathers the snapshot and the model
+// analyses (and, with action mode on, fixes) the connection.
+async function diagnoseAi() {
+    if (aiBusy) return;
+    if (!aiConfig.enabled || !aiConfig.provider || !aiConfig.model) { showView('aiSetupView'); return; }
+    await runAiExchange(i18n.t('ai.diagnose_msg'), () => ipcRenderer.invoke('ai-diagnose'));
 }
 
 async function resync() {
@@ -1295,6 +2016,7 @@ ipcRenderer.on('ai-ui-command', (e, cmd) => {
             if (cmd.key === 'dpi_use_tr_master_list') trMasterToggle.checked = !!cmd.value;
             if (cmd.key === 'auto_update') autoUpdateToggle.checked = !!cmd.value;
             if (cmd.key === 'show_update_notes') updateNotesToggle.checked = !!cmd.value;
+            if (cmd.key === 'show_donate') donateToggle.checked = !!cmd.value;
             break;
     }
 });
@@ -1401,14 +2123,24 @@ async function renderAudit() {
     paintState();
     paintTor();
     await loadProfiles();
+    loadUserProfiles();
     loadCustom();
+    // Re-apply the saved selection now that user profiles are registered too
+    // (loadProfiles ran before them and would have fallen back to bw_standard).
+    try {
+        const saved = await ipcRenderer.invoke('settings-get', 'last_profile');
+        const target = engineMode || saved;
+        if (target && (profileLabels[target] || target === 'custom')) profileSelect.value = target;
+    } catch (e) {}
     if (engineMode && (profileLabels[engineMode] || engineMode === 'custom')) profileSelect.value = engineMode;
     paintProfileName();
     await loadAiConfig();
     finishBoot();
     detectISP();
     refreshDns();
-    maybeNotes();
+    // Notes first; the support sheet follows when they close, or opens straight
+    // away when there were none to show.
+    maybeNotes().then(shown => { if (!shown) maybeDonate(); });
     try {
         if (await ipcRenderer.invoke('settings-get', 'ai_open_on_first_run') === true) {
             await ipcRenderer.invoke('settings-set', 'ai_open_on_first_run', false);
